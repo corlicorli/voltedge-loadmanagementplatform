@@ -1,7 +1,7 @@
 # VoltEdge — Load Management Platform
 
 > Teknisk produkt (MVP) til VoltEdge Mobility-casen — slice **A4.3 Skalering og driftsstabilitet**.
-> Det realiserer **Load Control Context** (kerne-subdomænet *Load Management*) med
+> Det realiserer **Load Control Context** (core-subdomænet *Load Management*) med
 > **Domain-Driven Design**, et reelt PostgreSQL-baseret REST-API, et React-baseret
 > **Business Intelligence**-dashboard og **Grafana/Prometheus**-driftsovervågning — det hele kørbart
 > med en enkelt `docker compose up`.
