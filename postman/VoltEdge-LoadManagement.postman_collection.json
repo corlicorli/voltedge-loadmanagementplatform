@@ -1,0 +1,285 @@
+{
+  "info": {
+    "_postman_id": "voltedge-load-mgmt-0001",
+    "name": "VoltEdge — Load Management Demo",
+    "description": "End-to-end demo of the Load Control Service + Analytics API.\n\nRun top to bottom against a freshly started stack (`docker compose up`) to reproduce the report scenario for LoadArea YN: baseline ~233 kW (WARNING) -> a new 11 kW session pushes load to 244 kW (CRITICAL) -> automatic 10% regulation -> ~219.6 kW (stabilized). Each request includes test assertions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "sessionId", "value": "" },
+    { "key": "baselineLoad", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Load Control",
+      "item": [
+        {
+          "name": "1. Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('service is up', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Get area status (baseline)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/load-areas/{{area_code}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('has currentLoadKw', () => pm.expect(b).to.have.property('currentLoadKw'));",
+                  "pm.test('status is a valid LoadStatus', () => pm.expect(['STABLE','WARNING','CRITICAL']).to.include(b.status));",
+                  "pm.collectionVariables.set('baselineLoad', b.currentLoadKw);",
+                  "console.log(`Baseline: ${b.currentLoadKw} kW (${b.status}), ${b.activeSessionCount} sessions`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. List active sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/load-areas/{{area_code}}/sessions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "console.log(`Active sessions: ${pm.response.json().length}`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Start charging session (triggers regulation)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chargerId\": \"{{charger_id}}\",\n  \"powerLevelKw\": 11\n}"
+            },
+            "url": "{{base_url}}/load-areas/{{area_code}}/sessions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test('returns a sessionId', () => pm.expect(r.sessionId).to.be.a('string'));",
+                  "pm.test('returns areaStatus', () => pm.expect(r.areaStatus).to.have.property('status'));",
+                  "pm.collectionVariables.set('sessionId', r.sessionId);",
+                  "const a = r.areaStatus;",
+                  "console.log(`Started ${r.sessionId}; area now ${a.currentLoadKw} kW (${a.status}), ${a.activeSessionCount} sessions`);",
+                  "if (a.status === 'WARNING' || a.status === 'STABLE') { console.log('Regulation kept the area below max capacity.'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Get area status (after regulation)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/load-areas/{{area_code}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test('load is below max capacity', () => pm.expect(s.currentLoadKw).to.be.below(s.maxCapacityKw + 0.001));",
+                  "console.log(`After regulation: ${s.currentLoadKw} kW (${s.status}), available ${s.availableCapacityKw} kW`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. List load adjustments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/load-areas/{{area_code}}/adjustments?limit=50"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const adj = pm.response.json();",
+                  "pm.test('returns an array', () => pm.expect(adj).to.be.an('array'));",
+                  "if (adj.length) { pm.test('adjustment reduces power', () => pm.expect(adj[0].newPowerKw).to.be.below(adj[0].previousPowerKw)); }",
+                  "console.log(`Load adjustments recorded: ${adj.length}`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Evaluate capacity (re-run regulation if needed)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/load-areas/{{area_code}}/evaluate"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns area status', () => pm.expect(pm.response.json()).to.have.property('status'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Analytics (BI)",
+      "item": [
+        {
+          "name": "KPIs",
+          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/kpis" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const k = pm.response.json();",
+                  "pm.test('has utilisation', () => pm.expect(k).to.have.property('currentUtilisationPct'));",
+                  "console.log(`Utilisation ${k.currentUtilisationPct}% | adjustments ${k.totalAdjustments} | open interventions ${k.openInterventions}`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Load timeseries (24h)",
+          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/load-timeseries?hours=24" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns samples', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Daily peaks (7d)",
+          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/daily-peaks?days=7" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns days', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Status distribution (7d)",
+          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/status-distribution?days=7" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns distribution', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Regulation events (diagnostic)",
+          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/regulation-events?limit=20" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns events', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "console.log(`Regulation events: ${pm.response.json().map(e => e.eventType).join(', ')}`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forecast (predictive, 12h)",
+          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/forecast?horizon_hours=12" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const f = pm.response.json();",
+                  "pm.test('has forecast points', () => pm.expect(f.points.length).to.be.above(0));",
+                  "console.log(`Forecast method: ${f.method}; ${f.points.length} points`);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

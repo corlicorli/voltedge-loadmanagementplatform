@@ -1,0 +1,14 @@
+apiVersion: 1
+
+# Operational monitoring datasource. Prometheus only — Grafana here watches
+# API/service health, NOT load-management business data (that lives in the
+# separate React BI dashboard).
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    uid: voltedge-prometheus
+    isDefault: true
+    jsonData:
+      timeInterval: 5s
