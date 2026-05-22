@@ -10,7 +10,7 @@ import {
 import type { LoadSample } from "@/lib/api";
 import { fmtTime } from "@/lib/format";
 
-const config: ChartConfig = { load: { label: "Load", color: "hsl(var(--primary))" } };
+const config: ChartConfig = { load: { label: "Load", color: "hsl(217 91% 55%)" } };
 
 interface Props {
   data: LoadSample[];

@@ -67,7 +67,7 @@ export default function App() {
   }, [load]);
 
   return (
-    <div className="mx-auto max-w-[1360px] px-6 py-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1840px] px-5 py-6 lg:px-8">
       <Header updatedAt={updatedAt} areaName={data?.status.areaName} areaCode={data?.status.areaCode} />
       {error && !data ? (
         <ErrorState message={error} />
