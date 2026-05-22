@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.analytics.api.schemas import (
     DailyPeak,
     EventCount,
-    ForecastResponse,
     HourlyUtilisation,
     KpiResponse,
     LoadSamplePoint,
@@ -112,19 +111,3 @@ async def event_counts(
     svc: AnalyticsService = Depends(get_analytics),
 ) -> list[EventCount]:
     return [EventCount.model_validate(r) for r in await svc.event_counts(area_code, days)]
-
-
-@router.get(
-    "/{area_code}/forecast",
-    response_model=ForecastResponse,
-    summary="Predictive: hour-of-day load forecast",
-)
-async def forecast(
-    area_code: str,
-    horizon_hours: int = Query(12, ge=1, le=48),
-    svc: AnalyticsService = Depends(get_analytics),
-) -> ForecastResponse:
-    result = await svc.forecast(area_code, horizon_hours)
-    if result is None:
-        raise HTTPException(status_code=404, detail=f"Load area '{area_code}' not found")
-    return ForecastResponse.model_validate(result)

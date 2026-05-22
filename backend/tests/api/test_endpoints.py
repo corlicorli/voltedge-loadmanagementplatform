@@ -65,12 +65,6 @@ def test_analytics_kpis(api_client):
     assert "currentUtilisationPct" in response.json()
 
 
-def test_forecast_returns_requested_horizon(api_client):
-    response = api_client.get("/analytics/YN/forecast?horizon_hours=6")
-    assert response.status_code == 200
-    assert len(response.json()["points"]) == 6
-
-
 @pytest.mark.parametrize(
     "path",
     [

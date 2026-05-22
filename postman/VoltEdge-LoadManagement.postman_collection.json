@@ -260,24 +260,6 @@
               }
             }
           ]
-        },
-        {
-          "name": "Forecast (predictive, 12h)",
-          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/forecast?horizon_hours=12" },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
-                  "const f = pm.response.json();",
-                  "pm.test('has forecast points', () => pm.expect(f.points.length).to.be.above(0));",
-                  "console.log(`Forecast method: ${f.method}; ${f.points.length} points`);"
-                ]
-              }
-            }
-          ]
         }
       ]
     }

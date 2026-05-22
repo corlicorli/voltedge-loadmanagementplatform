@@ -69,18 +69,3 @@ class EventCount(CamelModel):
     event_type: str
     day: datetime
     event_count: int
-
-
-class ForecastPoint(CamelModel):
-    timestamp: datetime
-    predicted_load_kw: float
-    predicted_utilisation_pct: float
-    predicted_status: str
-
-
-class ForecastResponse(CamelModel):
-    area_code: str
-    method: str
-    max_capacity_kw: float
-    horizon_hours: int
-    points: list[ForecastPoint]

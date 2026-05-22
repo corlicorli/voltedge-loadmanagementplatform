@@ -49,9 +49,9 @@ chain for the chosen slice:
 | §6 Data & analytics + Business Intelligence | `backend/app/analytics` + `frontend/` (React BI) |
 | §5 Test, deployment & operation | `tests/`, `.github/workflows/ci.yml`, Grafana/Prometheus |
 
-The MVP uses a **rule-based** load regulation model (not forecasting). A `Load Forecasting Context`
-can be added later without rewriting this model — the analytics service already exposes a basic
-hour-of-day forecast as that extension point.
+The MVP uses a **rule-based** load regulation model (not forecasting), in line with the report. A
+`Load Forecasting Context` can be added later as a separate bounded context without rewriting this
+model.
 
 ## 2. Architecture
 
@@ -159,7 +159,6 @@ Open **http://localhost:5173**. The dashboard polls the analytics API every 5 s 
 
 - **KPIs**: current load gauge + status, available capacity, active sessions, 24 h peak, open interventions
 - **Load trend** (24 h) with warning/critical threshold lines
-- **Predictive forecast** (next 12 h, hour-of-day model)
 - **Daily peak load** (7 days) coloured by status
 - **Status distribution** (time spent STABLE / WARNING / CRITICAL)
 - **Regulation events** timeline (diagnostic) + active sessions + load adjustments
@@ -189,7 +188,7 @@ This layer is intentionally independent of the BI dashboard.
 | POST | `/evaluate` | Re-evaluate load and regulate if needed |
 
 **Analytics / BI** (`/analytics/{areaCode}`): `kpis`, `load-timeseries`, `hourly-utilisation`,
-`daily-peaks`, `status-distribution`, `regulation-events`, `forecast`.
+`daily-peaks`, `status-distribution`, `regulation-events`.
 
 Example:
 
