@@ -1,4 +1,4 @@
-"""REST API for the Load Control Context (the five MVP endpoints)."""
+"""REST API for the Load Control Context."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -6,12 +6,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.load_control.api.schemas import (
     AdjustmentResponse,
     AreaStatusResponse,
+    ChargerResponse,
+    RegisterChargerRequest,
     SessionResponse,
     StartSessionRequest,
     StartSessionResponse,
 )
 from app.load_control.application.commands import (
     EvaluateLoadAreaCapacity,
+    RegisterCharger,
     StartChargingSession,
 )
 from app.load_control.application.load_control_service import LoadControlService
@@ -102,3 +105,35 @@ async def evaluate(
 ) -> AreaStatusResponse:
     await service.evaluate_capacity(EvaluateLoadAreaCapacity(area_code=area_code))
     return AreaStatusResponse.model_validate(await _require_status(queries, area_code))
+
+
+@router.post(
+    "/{area_code}/chargers",
+    response_model=ChargerResponse,
+    status_code=201,
+    summary="Register a new charger in a load area",
+)
+async def register_charger(
+    area_code: str,
+    body: RegisterChargerRequest,
+    service: LoadControlService = Depends(get_service),
+) -> ChargerResponse:
+    charger = await service.register_charger(
+        RegisterCharger(
+            area_code=area_code, charger_id=body.charger_id, max_power_kw=body.max_power_kw
+        )
+    )
+    return ChargerResponse.model_validate(charger)
+
+
+@router.get(
+    "/{area_code}/chargers",
+    response_model=list[ChargerResponse],
+    summary="List chargers in a load area",
+)
+async def list_chargers(
+    area_code: str, queries: PostgresLoadAreaQueries = Depends(get_queries)
+) -> list[ChargerResponse]:
+    await _require_status(queries, area_code)
+    rows = await queries.chargers(area_code)
+    return [ChargerResponse.model_validate(r) for r in rows]

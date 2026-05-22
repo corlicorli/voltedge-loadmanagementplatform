@@ -23,14 +23,17 @@ import type { Adjustment, RegulationEvent, Session } from "@/lib/api";
 import { fmtDateTime, fmtTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+const ACCENT = "hsl(227 76% 60%)";
+
 const EVENT_COLOR: Record<string, string> = {
-  LoadThresholdReached: "hsl(0 0% 45%)",
-  LoadRuleActivated: "hsl(0 0% 30%)",
-  ChargingPowerReduced: "hsl(0 0% 55%)",
-  CurrentLoadUpdated: "hsl(0 0% 72%)",
-  RegulationResultEvaluated: "hsl(0 0% 35%)",
-  LoadAreaStabilized: "hsl(0 0% 60%)",
-  RegulationFailed: "hsl(0 0% 12%)",
+  ChargerRegistered: "hsl(222 88% 66%)",
+  LoadThresholdReached: "hsl(32 90% 52%)",
+  LoadRuleActivated: "hsl(227 76% 60%)",
+  ChargingPowerReduced: "hsl(222 88% 66%)",
+  CurrentLoadUpdated: "hsl(220 9% 60%)",
+  RegulationResultEvaluated: "hsl(230 66% 52%)",
+  LoadAreaStabilized: "hsl(222 62% 58%)",
+  RegulationFailed: "hsl(4 64% 57%)",
 };
 
 function eventDetail(event: RegulationEvent): string {
@@ -41,7 +44,7 @@ function eventDetail(event: RegulationEvent): string {
 export function RegulationTimeline({ events }: { events: RegulationEvent[] }) {
   return (
     <Card>
-      <CardHeading icon={<History className="h-4 w-4" />} color="hsl(0 0% 16%)" title="Regulation Events" />
+      <CardHeading icon={<History className="h-4 w-4" />} color={ACCENT} title="Regulation Events" />
       <CardContent>
         {events.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
@@ -56,7 +59,7 @@ export function RegulationTimeline({ events }: { events: RegulationEvent[] }) {
               >
                 <span
                   className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: EVENT_COLOR[e.eventType] ?? "hsl(0 0% 45%)" }}
+                  style={{ backgroundColor: EVENT_COLOR[e.eventType] ?? "hsl(220 9% 60%)" }}
                 />
                 <div className="flex-1">
                   <div className="text-sm font-medium">{e.eventType}</div>
@@ -92,7 +95,7 @@ export function SessionsTable({ sessions, filter, adjustments }: SessionsTablePr
     <Card id="sessions" className="scroll-mt-24">
       <CardHeading
         icon={<Plug className="h-4 w-4" />}
-        color="hsl(0 0% 16%)"
+        color={ACCENT}
         title="Active Charging Sessions"
         right={<span className="text-xs text-muted-foreground">{rows.length} shown · click a row</span>}
       />
@@ -216,7 +219,7 @@ export function AdjustmentsTable({ adjustments }: { adjustments: Adjustment[] })
     <Card>
       <CardHeading
         icon={<SlidersHorizontal className="h-4 w-4" />}
-        color="hsl(0 0% 16%)"
+        color={ACCENT}
         title="Load Adjustments"
         right={<span className="text-xs text-muted-foreground">{adjustments.length} recent</span>}
       />

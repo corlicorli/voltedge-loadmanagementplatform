@@ -24,3 +24,12 @@ class EvaluateLoadAreaCapacity:
     """Trigger: operational re-evaluation of an area's load (and regulate if needed)."""
 
     area_code: str
+
+
+@dataclass(frozen=True)
+class RegisterCharger:
+    """Trigger: a new charger is added to a load area."""
+
+    area_code: str
+    charger_id: str
+    max_power_kw: float

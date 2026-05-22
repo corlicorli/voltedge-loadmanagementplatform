@@ -7,8 +7,11 @@ this service owns the workflow.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from app.load_control.application.commands import (
     EvaluateLoadAreaCapacity,
+    RegisterCharger,
     StartChargingSession,
 )
 from app.load_control.application.policies import (
@@ -46,6 +49,17 @@ class LoadControlService:
         area.reassess()
         await self._regulate_if_needed(area)
         await self._persist(area)
+
+    async def register_charger(self, cmd: RegisterCharger) -> dict[str, Any]:
+        area = await self._areas.get(AreaCode(cmd.area_code))
+        charger = area.register_charger(cmd.charger_id, cmd.max_power_kw)
+        await self._persist(area)
+        return {
+            "charger_id": charger.charger_id,
+            "area_code": charger.area_code,
+            "max_power_kw": charger.max_power_kw,
+            "status": charger.status.value,
+        }
 
     async def _regulate_if_needed(self, area: LoadArea) -> None:
         # LoadRegulationPolicy (on LoadAreaUpdated): activate regulation at/over max.

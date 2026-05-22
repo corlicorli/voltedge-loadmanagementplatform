@@ -12,6 +12,7 @@ import {
 import type { DailyPeak, LoadStatus, StatusDistribution } from "@/lib/api";
 import { STATUS_COLOR, fmtDay } from "@/lib/format";
 
+const ACCENT = "hsl(227 76% 60%)";
 const peaksConfig: ChartConfig = { peak: { label: "Peak" }, avg: { label: "Avg" } };
 
 interface PeaksProps {
@@ -29,7 +30,7 @@ export function DailyPeaksChart({ data, warningKw, criticalKw, maxKw }: PeaksPro
 
   return (
     <Card>
-      <CardHeading icon={<BarChart3 className="h-4 w-4" />} color="hsl(0 0% 16%)" title="Daily Peak Load" />
+      <CardHeading icon={<BarChart3 className="h-4 w-4" />} color={ACCENT} title="Daily Peak Load" />
       <CardContent>
         <div className="mb-1 flex items-baseline gap-2">
           <span className="text-2xl font-semibold tabular-nums">{maxPeak.toFixed(1)} kW</span>
@@ -55,21 +56,13 @@ export function DailyPeaksChart({ data, warningKw, criticalKw, maxKw }: PeaksPro
   );
 }
 
-// Donut is the one exception to the monochrome palette: subtle orange / red for
-// WARNING / CRITICAL so the health split reads at a glance. STABLE stays grey.
-const DONUT_COLOR: Record<LoadStatus, string> = {
-  STABLE: "hsl(0 0% 72%)",
-  WARNING: "hsl(30 72% 55%)",
-  CRITICAL: "hsl(2 66% 55%)",
-};
-
 const donutConfig: ChartConfig = {};
 
 export function StatusDonut({ data }: { data: StatusDistribution[] }) {
   const rows = data.map((d) => ({ name: d.status as LoadStatus, value: d.samples, pct: d.pct }));
   return (
     <Card>
-      <CardHeading icon={<PieChartIcon className="h-4 w-4" />} color="hsl(0 0% 16%)" title="Status Distribution" />
+      <CardHeading icon={<PieChartIcon className="h-4 w-4" />} color={ACCENT} title="Status Distribution" />
       <CardContent>
         <div className="flex items-center gap-5">
           <ChartContainer config={donutConfig} className="aspect-square h-[180px] w-[180px]">
@@ -85,7 +78,7 @@ export function StatusDonut({ data }: { data: StatusDistribution[] }) {
                 stroke="none"
               >
                 {rows.map((r) => (
-                  <Cell key={r.name} fill={DONUT_COLOR[r.name]} />
+                  <Cell key={r.name} fill={STATUS_COLOR[r.name]} />
                 ))}
               </Pie>
             </PieChart>
@@ -94,7 +87,7 @@ export function StatusDonut({ data }: { data: StatusDistribution[] }) {
             {rows.map((r) => (
               <div key={r.name} className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: DONUT_COLOR[r.name] }} />
+                  <span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: STATUS_COLOR[r.name] }} />
                   {r.name}
                 </span>
                 <span className="font-medium tabular-nums">{r.pct.toFixed(1)}%</span>

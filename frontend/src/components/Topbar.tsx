@@ -47,7 +47,7 @@ export function Topbar({ query, onQuery, updatedLabel, onRefresh }: Props) {
         >
           <Github className="h-4 w-4" />
         </a>
-        <div className="h-9 w-9 rounded-full bg-foreground" />
+        <div className="h-9 w-9 rounded-full bg-primary" />
       </div>
     </header>
   );

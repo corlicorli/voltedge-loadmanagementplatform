@@ -53,6 +53,20 @@ def test_unknown_charger_is_rejected(api_client):
     assert response.status_code == 422
 
 
+def test_register_charger_and_list(api_client):
+    import uuid as _uuid
+
+    charger_id = f"YN-T{_uuid.uuid4().hex[:6]}"
+    created = api_client.post(
+        "/load-areas/YN/chargers", json={"chargerId": charger_id, "maxPowerKw": 11}
+    )
+    assert created.status_code == 201
+    assert created.json()["chargerId"] == charger_id
+    listed = api_client.get("/load-areas/YN/chargers")
+    assert listed.status_code == 200
+    assert any(c["chargerId"] == charger_id for c in listed.json())
+
+
 def test_adjustments_endpoint(api_client):
     response = api_client.get("/load-areas/YN/adjustments?limit=10")
     assert response.status_code == 200

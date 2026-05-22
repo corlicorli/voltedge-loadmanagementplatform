@@ -112,3 +112,18 @@ def test_restore_power_when_load_drops_below_warning():
     assert area.current_load_kw == 9.9
     assert area.restore_power_if_stable() is True
     assert area.current_load_kw == 11.0
+
+
+def test_register_charger_adds_and_emits_event():
+    area = make_area([11.0])  # make_area seeds 24 chargers
+    charger = area.register_charger("YN-25", 11.0)
+    assert charger.charger_id == "YN-25"
+    assert area.charger_count == 25
+    events = [e.event_type for e in area.pull_events()]
+    assert "ChargerRegistered" in events
+
+
+def test_register_duplicate_charger_rejected():
+    area = make_area([11.0])
+    with pytest.raises(ValueError):
+        area.register_charger("YN-01", 11.0)

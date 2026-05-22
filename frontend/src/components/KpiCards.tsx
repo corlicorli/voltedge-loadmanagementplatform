@@ -8,10 +8,10 @@ import type { AreaStatus, Kpis, LoadSample } from "@/lib/api";
 import { STATUS_BADGE, fmtKw } from "@/lib/format";
 
 const ACCENT = {
-  blue: "hsl(0 0% 16%)",
-  green: "hsl(0 0% 30%)",
-  violet: "hsl(0 0% 22%)",
-  orange: "hsl(0 0% 42%)",
+  blue: "hsl(227 76% 60%)",
+  green: "hsl(222 88% 66%)",
+  violet: "hsl(230 66% 52%)",
+  orange: "hsl(226 74% 56%)",
 };
 
 export function KpiCards({

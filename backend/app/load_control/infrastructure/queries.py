@@ -48,3 +48,16 @@ class PostgresLoadAreaQueries(LoadAreaQueries):
                 limit,
             )
         return [dict(r) for r in rows]
+
+    async def chargers(self, area_code: str) -> list[dict[str, Any]]:
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT charger_id, area_code, max_power_kw, status
+                FROM chargers
+                WHERE area_code = $1
+                ORDER BY charger_id
+                """,
+                area_code,
+            )
+        return [dict(r) for r in rows]

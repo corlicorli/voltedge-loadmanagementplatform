@@ -22,3 +22,7 @@ class LoadAreaQueries(ABC):
     @abstractmethod
     async def adjustments(self, area_code: str, limit: int = 100) -> list[dict[str, Any]]:
         """LoadAdjustmentView for one area."""
+
+    @abstractmethod
+    async def chargers(self, area_code: str) -> list[dict[str, Any]]:
+        """Chargers belonging to one area."""

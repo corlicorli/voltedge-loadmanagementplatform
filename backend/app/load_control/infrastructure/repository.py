@@ -45,6 +45,19 @@ class PostgresLoadAreaRepository(LoadAreaRepository):
                 area.area_code.value,
                 area.status.value,
             )
+            for charger in area.chargers:
+                await conn.execute(
+                    """
+                    INSERT INTO chargers (charger_id, area_code, max_power_kw, status)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (charger_id) DO UPDATE
+                        SET max_power_kw = EXCLUDED.max_power_kw, status = EXCLUDED.status
+                    """,
+                    charger.charger_id,
+                    charger.area_code,
+                    charger.max_power_kw,
+                    charger.status.value,
+                )
             for session in area.sessions:
                 await conn.execute(
                     """

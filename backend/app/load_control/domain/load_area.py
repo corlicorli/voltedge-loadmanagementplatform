@@ -17,6 +17,7 @@ import uuid
 
 from app.load_control.domain.entities import (
     Charger,
+    ChargerStatus,
     ChargingSession,
     LoadAdjustment,
     LoadRule,
@@ -24,6 +25,7 @@ from app.load_control.domain.entities import (
     SessionStatus,
 )
 from app.load_control.domain.events import (
+    ChargerRegistered,
     ChargingPowerReduced,
     ChargingSessionStarted,
     CurrentLoadUpdated,
@@ -85,6 +87,33 @@ class LoadArea:
     @property
     def active_session_count(self) -> int:
         return len(self.active_sessions)
+
+    @property
+    def charger_count(self) -> int:
+        return len(self._chargers)
+
+    # ----- command: RegisterCharger -----------------------------------------
+
+    def register_charger(self, charger_id: str, max_power_kw: float) -> Charger:
+        if charger_id in self._chargers:
+            raise ValueError(f"Charger {charger_id!r} already exists in area {self.area_code}")
+        if max_power_kw <= 0:
+            raise ValueError("Charger max power must be positive")
+        charger = Charger(
+            charger_id=charger_id,
+            area_code=self.area_code.value,
+            max_power_kw=max_power_kw,
+            status=ChargerStatus.AVAILABLE,
+        )
+        self._chargers[charger_id] = charger
+        self._record(
+            ChargerRegistered(
+                area_code=self.area_code.value,
+                charger_id=charger_id,
+                max_power_kw=max_power_kw,
+            )
+        )
+        return charger
 
     # ----- command: StartChargingSession ------------------------------------
 

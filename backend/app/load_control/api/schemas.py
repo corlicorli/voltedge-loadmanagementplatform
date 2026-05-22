@@ -53,3 +53,15 @@ class AdjustmentResponse(CamelModel):
     new_power_kw: float
     reason: str
     created_at: datetime
+
+
+class RegisterChargerRequest(CamelModel):
+    charger_id: str = Field(min_length=1, examples=["YN-25"])
+    max_power_kw: float = Field(gt=0, le=350, examples=[11])
+
+
+class ChargerResponse(CamelModel):
+    charger_id: str
+    area_code: str
+    max_power_kw: float
+    status: str

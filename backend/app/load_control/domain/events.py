@@ -99,3 +99,12 @@ class RegulationFailed(DomainEvent):
     area_code: str
     current_load_kw: float
     max_capacity_kw: float
+
+
+@dataclass(frozen=True)
+class ChargerRegistered(DomainEvent):
+    """A new charger has been registered in a LoadArea."""
+
+    area_code: str
+    charger_id: str
+    max_power_kw: float

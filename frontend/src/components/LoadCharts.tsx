@@ -12,7 +12,7 @@ import {
 import type { LoadSample } from "@/lib/api";
 import { fmtTime } from "@/lib/format";
 
-const config: ChartConfig = { load: { label: "Load", color: "hsl(0 0% 16%)" } };
+const config: ChartConfig = { load: { label: "Load", color: "hsl(227 76% 60%)" } };
 
 interface Props {
   data: LoadSample[];
@@ -27,7 +27,7 @@ export function LoadTrendChart({ data, warningKw, criticalKw, maxKw }: Props) {
     <Card>
       <CardHeading
         icon={<LineChartIcon className="h-4 w-4" />}
-        color="hsl(0 0% 16%)"
+        color="hsl(227 76% 60%)"
         title="Load Trend"
         right={
           <span className="rounded-full border px-3 py-1 text-xs text-muted-foreground">Last 24h</span>
