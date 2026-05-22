@@ -60,21 +60,6 @@ export interface RegulationEvent {
   payload: Record<string, unknown>;
 }
 
-export interface ForecastPoint {
-  timestamp: string;
-  predictedLoadKw: number;
-  predictedUtilisationPct: number;
-  predictedStatus: LoadStatus;
-}
-
-export interface Forecast {
-  areaCode: string;
-  method: string;
-  maxCapacityKw: number;
-  horizonHours: number;
-  points: ForecastPoint[];
-}
-
 export interface Session {
   sessionId: string;
   chargerId: string;
@@ -113,6 +98,4 @@ export const api = {
     get<StatusDistribution[]>(`/analytics/${area}/status-distribution?days=${days}`),
   regulationEvents: (area: string, limit = 15) =>
     get<RegulationEvent[]>(`/analytics/${area}/regulation-events?limit=${limit}`),
-  forecast: (area: string, horizonHours = 12) =>
-    get<Forecast>(`/analytics/${area}/forecast?horizon_hours=${horizonHours}`),
 };

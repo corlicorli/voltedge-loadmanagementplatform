@@ -1,21 +1,24 @@
+import { Zap } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { AdjustmentsTable, RegulationTimeline, SessionsTable } from "./components/ActivityPanels";
-import { KpiCards } from "./components/KpiCards";
-import { ForecastChart, LoadTrendChart } from "./components/LoadCharts";
-import { DailyPeaksChart, StatusDonut } from "./components/UsageCharts";
+import { AdjustmentsTable, RegulationTimeline, SessionsTable } from "@/components/ActivityPanels";
+import { KpiCards } from "@/components/KpiCards";
+import { LoadTrendChart } from "@/components/LoadCharts";
+import { DailyPeaksChart, StatusDonut } from "@/components/UsageCharts";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  api,
   type Adjustment,
   type AreaStatus,
   type DailyPeak,
-  type Forecast,
   type Kpis,
   type LoadSample,
   type RegulationEvent,
   type Session,
   type StatusDistribution,
-} from "./lib/api";
+  api,
+} from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const AREA = "YN";
 const POLL_MS = 5000;
@@ -27,7 +30,6 @@ interface DashboardData {
   dailyPeaks: DailyPeak[];
   distribution: StatusDistribution[];
   events: RegulationEvent[];
-  forecast: Forecast;
   sessions: Session[];
   adjustments: Adjustment[];
 }
@@ -39,7 +41,7 @@ export default function App() {
 
   const load = useCallback(async () => {
     try {
-      const [status, kpis, timeseries, dailyPeaks, distribution, events, forecast, sessions, adjustments] =
+      const [status, kpis, timeseries, dailyPeaks, distribution, events, sessions, adjustments] =
         await Promise.all([
           api.status(AREA),
           api.kpis(AREA),
@@ -47,11 +49,10 @@ export default function App() {
           api.dailyPeaks(AREA, 7),
           api.statusDistribution(AREA, 7),
           api.regulationEvents(AREA, 15),
-          api.forecast(AREA, 12),
           api.sessions(AREA),
           api.adjustments(AREA),
         ]);
-      setData({ status, kpis, timeseries, dailyPeaks, distribution, events, forecast, sessions, adjustments });
+      setData({ status, kpis, timeseries, dailyPeaks, distribution, events, sessions, adjustments });
       setError(null);
       setUpdatedAt(new Date());
     } catch (e) {
@@ -65,75 +66,38 @@ export default function App() {
     return () => clearInterval(id);
   }, [load]);
 
-  if (error && !data) {
-    return (
-      <div className="app">
-        <Header updatedAt={null} />
-        <div className="center-screen">
-          <div className="error-box">
-            <b>Cannot reach the Load Control Service</b>
-            <div style={{ marginTop: 8, fontSize: 13 }}>{error}</div>
-            <div style={{ marginTop: 8, fontSize: 12 }} className="muted">
-              Expected API at {api.baseUrl}. Is the backend running?
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="app">
-        <Header updatedAt={null} />
-        <div className="center-screen">
-          <div>
-            <div className="spinner" />
-            <div className="muted" style={{ marginTop: 12 }}>
-              Loading load-management data…
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const s = data.status;
   return (
-    <div className="app">
-      <Header updatedAt={updatedAt} areaName={s.areaName} areaCode={s.areaCode} />
-      <KpiCards status={s} kpis={data.kpis} />
-
-      <div className="grid cols-2" style={{ marginBottom: 18 }}>
-        <LoadTrendChart
-          data={data.timeseries}
-          warningKw={s.warningThresholdKw}
-          criticalKw={s.criticalThresholdKw}
-          maxKw={s.maxCapacityKw}
-        />
-        <ForecastChart
-          forecast={data.forecast}
-          warningKw={s.warningThresholdKw}
-          criticalKw={s.criticalThresholdKw}
-        />
-      </div>
-
-      <div className="grid cols-2" style={{ marginBottom: 18 }}>
-        <DailyPeaksChart
-          data={data.dailyPeaks}
-          warningKw={s.warningThresholdKw}
-          criticalKw={s.criticalThresholdKw}
-          maxKw={s.maxCapacityKw}
-        />
-        <StatusDonut data={data.distribution} />
-      </div>
-
-      <div className="grid cols-2" style={{ marginBottom: 18 }}>
-        <RegulationTimeline events={data.events} />
-        <SessionsTable sessions={data.sessions} />
-      </div>
-
-      <AdjustmentsTable adjustments={data.adjustments} />
+    <div className="mx-auto max-w-[1360px] px-6 py-6 lg:px-8">
+      <Header updatedAt={updatedAt} areaName={data?.status.areaName} areaCode={data?.status.areaCode} />
+      {error && !data ? (
+        <ErrorState message={error} />
+      ) : !data ? (
+        <LoadingState />
+      ) : (
+        <div className="space-y-4">
+          <KpiCards status={data.status} kpis={data.kpis} />
+          <LoadTrendChart
+            data={data.timeseries}
+            warningKw={data.status.warningThresholdKw}
+            criticalKw={data.status.criticalThresholdKw}
+            maxKw={data.status.maxCapacityKw}
+          />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <DailyPeaksChart
+              data={data.dailyPeaks}
+              warningKw={data.status.warningThresholdKw}
+              criticalKw={data.status.criticalThresholdKw}
+              maxKw={data.status.maxCapacityKw}
+            />
+            <StatusDonut data={data.distribution} />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <RegulationTimeline events={data.events} />
+            <SessionsTable sessions={data.sessions} />
+          </div>
+          <AdjustmentsTable adjustments={data.adjustments} />
+        </div>
+      )}
     </div>
   );
 }
@@ -148,23 +112,59 @@ function Header({
   areaCode?: string;
 }) {
   return (
-    <div className="header">
-      <div className="brand">
-        <div className="bolt">⚡</div>
+    <header className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+      <div className="flex items-center gap-3.5">
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-sky-600 text-primary-foreground shadow-lg shadow-primary/30">
+          <Zap className="h-5 w-5" />
+        </div>
         <div>
-          <h1>VoltEdge · Load Management BI</h1>
-          <div className="sub">
+          <h1 className="text-lg font-semibold tracking-tight">VoltEdge · Load Management BI</h1>
+          <p className="text-[13px] text-muted-foreground">
             {areaName ? `${areaName} (${areaCode})` : "Load Control Context"} · Business Intelligence Dashboard
-          </div>
+          </p>
         </div>
       </div>
-      <div className="header-meta">
-        <span>
-          <span className="live-dot" />
-          Live · refresh {POLL_MS / 1000}s
+      <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
+        <span className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-stable opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-stable" />
+          </span>
+          Live · {POLL_MS / 1000}s
         </span>
         {updatedAt && <span>Updated {updatedAt.toLocaleTimeString()}</span>}
       </div>
+    </header>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className={cn("h-[118px]", i === 0 && "lg:col-span-2")} />
+        ))}
+      </div>
+      <Skeleton className="h-[320px]" />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Skeleton className="h-[300px]" />
+        <Skeleton className="h-[300px]" />
+      </div>
     </div>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <Card className="mx-auto mt-16 max-w-lg border-critical/40">
+      <CardContent className="p-6">
+        <div className="font-semibold text-critical">Cannot reach the Load Control Service</div>
+        <p className="mt-2 text-sm text-muted-foreground">{message}</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Expected API at {api.baseUrl}. Is the backend running?
+        </p>
+      </CardContent>
+    </Card>
   );
 }
