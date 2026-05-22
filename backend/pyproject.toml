@@ -1,0 +1,24 @@
+[project]
+name = "voltedge-load-control"
+version = "0.1.0"
+description = "VoltEdge Load Control Service — Load Management MVP built with Domain-Driven Design"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "C4"]
+ignore = ["B008", "N818"]  # B008: FastAPI Depends/Query defaults; N818: intentional domain exception names
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+markers = [
+    "unit: pure unit tests with no external dependencies",
+    "integration: requires a running PostgreSQL at DATABASE_URL",
+]

@@ -1,0 +1,85 @@
+# VoltEdge Load Management — full stack. Run everything with: docker compose up
+#
+#   postgres    operational DB + analytics warehouse views        :5432
+#   backend     Load Control Service (FastAPI, DDD)               :8000  (/docs, /metrics, /health)
+#   frontend    React BI dashboard (§6 Business Intelligence)     :5173
+#   prometheus  scrapes backend /metrics                          :9090
+#   grafana     API/ops monitoring dashboards + alerts (§5)       :3001
+#
+# BI (frontend) and ops monitoring (grafana) are intentionally separate concerns.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-voltedge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voltedge}
+      POSTGRES_DB: ${POSTGRES_DB:-voltedge}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-voltedge} -d ${POSTGRES_DB:-voltedge}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-voltedge}:${POSTGRES_PASSWORD:-voltedge}@postgres:5432/${POSTGRES_DB:-voltedge}
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      RUN_MIGRATIONS_ON_STARTUP: "true"
+      SEED_ON_STARTUP: "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  pgdata:
+  grafana-data:
