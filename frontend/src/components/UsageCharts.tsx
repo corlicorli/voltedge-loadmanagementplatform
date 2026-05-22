@@ -55,6 +55,14 @@ export function DailyPeaksChart({ data, warningKw, criticalKw, maxKw }: PeaksPro
   );
 }
 
+// Donut is the one exception to the monochrome palette: subtle orange / red for
+// WARNING / CRITICAL so the health split reads at a glance. STABLE stays grey.
+const DONUT_COLOR: Record<LoadStatus, string> = {
+  STABLE: "hsl(0 0% 72%)",
+  WARNING: "hsl(30 72% 55%)",
+  CRITICAL: "hsl(2 66% 55%)",
+};
+
 const donutConfig: ChartConfig = {};
 
 export function StatusDonut({ data }: { data: StatusDistribution[] }) {
@@ -77,7 +85,7 @@ export function StatusDonut({ data }: { data: StatusDistribution[] }) {
                 stroke="none"
               >
                 {rows.map((r) => (
-                  <Cell key={r.name} fill={STATUS_COLOR[r.name]} />
+                  <Cell key={r.name} fill={DONUT_COLOR[r.name]} />
                 ))}
               </Pie>
             </PieChart>
@@ -86,7 +94,7 @@ export function StatusDonut({ data }: { data: StatusDistribution[] }) {
             {rows.map((r) => (
               <div key={r.name} className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: STATUS_COLOR[r.name] }} />
+                  <span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: DONUT_COLOR[r.name] }} />
                   {r.name}
                 </span>
                 <span className="font-medium tabular-nums">{r.pct.toFixed(1)}%</span>

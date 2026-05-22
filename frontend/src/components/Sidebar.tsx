@@ -10,8 +10,8 @@ export function Sidebar() {
   return (
     <aside className="hidden w-64 shrink-0 flex-col self-start border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:overflow-y-auto">
       <div className="px-5 py-5">
-        <div className="text-base font-semibold tracking-tight">VoltEdge</div>
-        <div className="text-[11px] text-muted-foreground">Load Management</div>
+        <div className="text-[15px] font-semibold leading-tight tracking-tight">VoltEdge Mobility A/S</div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">Load Management</div>
       </div>
 
       <nav className="flex-1 space-y-6 px-3 py-2">

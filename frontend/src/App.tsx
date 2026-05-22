@@ -137,7 +137,11 @@ export default function App() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <SessionsTable sessions={data.sessions} filter={query} />
+                <SessionsTable
+                  sessions={data.sessions}
+                  filter={query}
+                  adjustments={data.adjustments}
+                />
                 <AdjustmentsTable adjustments={data.adjustments} />
               </div>
             </div>
