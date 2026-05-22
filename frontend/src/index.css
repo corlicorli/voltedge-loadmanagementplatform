@@ -2,37 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Light admin theme — soft lavender page, white rounded cards with soft
-   shadows, blue/orange/green accents (EV-Admin style). */
+/* Minimal monochrome theme — black / white / greys only. */
 @layer base {
   :root {
-    --background: 228 40% 96%;
-    --foreground: 230 25% 12%;
+    --background: 0 0% 96%;
+    --foreground: 0 0% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 230 25% 12%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 230 25% 12%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 228 30% 95%;
-    --secondary-foreground: 230 25% 12%;
-    --muted: 228 24% 93%;
-    --muted-foreground: 230 12% 46%;
-    --accent: 228 30% 95%;
-    --accent-foreground: 230 25% 12%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 228 22% 90%;
-    --input: 228 22% 90%;
-    --ring: 217 91% 60%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 93%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 0% 9%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
+    --ring: 0 0% 55%;
     --radius: 1rem;
-    --stable: 142 66% 42%;
-    --warning: 32 95% 48%;
-    --critical: 0 84% 58%;
+    --stable: 0 0% 72%;
+    --warning: 0 0% 45%;
+    --critical: 0 0% 14%;
   }
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   * {
     @apply border-border;
   }

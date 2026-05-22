@@ -15,13 +15,13 @@ import { fmtDateTime, fmtTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const EVENT_COLOR: Record<string, string> = {
-  LoadThresholdReached: "hsl(var(--warning))",
-  LoadRuleActivated: "hsl(217 91% 60%)",
-  ChargingPowerReduced: "hsl(199 89% 55%)",
-  CurrentLoadUpdated: "hsl(var(--muted-foreground))",
-  RegulationResultEvaluated: "hsl(258 80% 64%)",
-  LoadAreaStabilized: "hsl(var(--stable))",
-  RegulationFailed: "hsl(var(--critical))",
+  LoadThresholdReached: "hsl(0 0% 45%)",
+  LoadRuleActivated: "hsl(0 0% 30%)",
+  ChargingPowerReduced: "hsl(0 0% 55%)",
+  CurrentLoadUpdated: "hsl(0 0% 72%)",
+  RegulationResultEvaluated: "hsl(0 0% 35%)",
+  LoadAreaStabilized: "hsl(0 0% 60%)",
+  RegulationFailed: "hsl(0 0% 12%)",
 };
 
 function eventDetail(event: RegulationEvent): string {
@@ -32,7 +32,7 @@ function eventDetail(event: RegulationEvent): string {
 export function RegulationTimeline({ events }: { events: RegulationEvent[] }) {
   return (
     <Card>
-      <CardHeading icon={<History className="h-4 w-4" />} color="hsl(258 80% 64%)" title="Regulation Events" />
+      <CardHeading icon={<History className="h-4 w-4" />} color="hsl(0 0% 16%)" title="Regulation Events" />
       <CardContent>
         {events.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
@@ -69,10 +69,10 @@ export function SessionsTable({ sessions, filter }: { sessions: Session[]; filte
   const q = filter.trim().toLowerCase();
   const rows = q ? sessions.filter((s) => s.chargerId.toLowerCase().includes(q)) : sessions;
   return (
-    <Card id="sessions">
+    <Card id="sessions" className="scroll-mt-24">
       <CardHeading
         icon={<Plug className="h-4 w-4" />}
-        color="hsl(217 91% 60%)"
+        color="hsl(0 0% 16%)"
         title="Active Charging Sessions"
         right={<span className="text-xs text-muted-foreground">{rows.length} shown</span>}
       />
@@ -114,7 +114,7 @@ export function AdjustmentsTable({ adjustments }: { adjustments: Adjustment[] })
     <Card>
       <CardHeading
         icon={<SlidersHorizontal className="h-4 w-4" />}
-        color="hsl(142 66% 42%)"
+        color="hsl(0 0% 16%)"
         title="Load Adjustments"
         right={<span className="text-xs text-muted-foreground">{adjustments.length} recent</span>}
       />

@@ -1,12 +1,4 @@
-import {
-  Activity,
-  BarChart3,
-  ExternalLink,
-  FileCode2,
-  Gauge,
-  LayoutDashboard,
-  Zap,
-} from "lucide-react";
+import { Activity, BarChart3, ExternalLink, FileCode2, Gauge, LayoutDashboard } from "lucide-react";
 import type { ReactNode } from "react";
 
 const DOCS_URL = "http://localhost:8000/docs";
@@ -16,15 +8,10 @@ const REPO_URL = "https://github.com/corlicorli/voltedge-loadmanagementplatform"
 
 export function Sidebar() {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:flex">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-sky-500 text-white shadow-sm">
-          <Zap className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-sm font-semibold leading-tight">VoltEdge</div>
-          <div className="text-[11px] text-muted-foreground">Load Management</div>
-        </div>
+    <aside className="hidden w-64 shrink-0 flex-col self-start border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:overflow-y-auto">
+      <div className="px-5 py-5">
+        <div className="text-base font-semibold tracking-tight">VoltEdge</div>
+        <div className="text-[11px] text-muted-foreground">Load Management</div>
       </div>
 
       <nav className="flex-1 space-y-6 px-3 py-2">

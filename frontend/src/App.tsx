@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AdjustmentsTable, RegulationTimeline, SessionsTable } from "@/components/ActivityPanels";
 import { KpiCards } from "@/components/KpiCards";
@@ -68,6 +68,15 @@ export default function App() {
     return () => clearInterval(id);
   }, [load]);
 
+  // When a search starts, jump to the (filtered) sessions table so the effect is visible.
+  const prevQuery = useRef("");
+  useEffect(() => {
+    if (prevQuery.current === "" && query !== "") {
+      document.getElementById("sessions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    prevQuery.current = query;
+  }, [query]);
+
   const interventions = data?.kpis.openInterventions ?? 0;
 
   return (
@@ -104,7 +113,7 @@ export default function App() {
               <KpiCards status={data.status} kpis={data.kpis} series={data.timeseries} />
 
               <div className="grid gap-4 lg:grid-cols-3">
-                <div id="analytics" className="lg:col-span-2">
+                <div id="analytics" className="scroll-mt-24 lg:col-span-2">
                   <LoadTrendChart
                     data={data.timeseries}
                     warningKw={data.status.warningThresholdKw}

@@ -29,7 +29,7 @@ export function DailyPeaksChart({ data, warningKw, criticalKw, maxKw }: PeaksPro
 
   return (
     <Card>
-      <CardHeading icon={<BarChart3 className="h-4 w-4" />} color="hsl(32 95% 48%)" title="Daily Peak Load" />
+      <CardHeading icon={<BarChart3 className="h-4 w-4" />} color="hsl(0 0% 16%)" title="Daily Peak Load" />
       <CardContent>
         <div className="mb-1 flex items-baseline gap-2">
           <span className="text-2xl font-semibold tabular-nums">{maxPeak.toFixed(1)} kW</span>
@@ -61,7 +61,7 @@ export function StatusDonut({ data }: { data: StatusDistribution[] }) {
   const rows = data.map((d) => ({ name: d.status as LoadStatus, value: d.samples, pct: d.pct }));
   return (
     <Card>
-      <CardHeading icon={<PieChartIcon className="h-4 w-4" />} color="hsl(258 80% 64%)" title="Status Distribution" />
+      <CardHeading icon={<PieChartIcon className="h-4 w-4" />} color="hsl(0 0% 16%)" title="Status Distribution" />
       <CardContent>
         <div className="flex items-center gap-5">
           <ChartContainer config={donutConfig} className="aspect-square h-[180px] w-[180px]">
