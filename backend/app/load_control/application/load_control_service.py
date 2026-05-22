@@ -1,0 +1,76 @@
+"""LoadControlService — application service orchestrating Load Management.
+
+It loads the aggregate, invokes the relevant command method(s), then drives the
+regulation cascade by consulting the four named policies, and finally persists
+state and publishes the recorded domain events. The aggregate owns the rules;
+this service owns the workflow.
+"""
+from __future__ import annotations
+
+from app.load_control.application.commands import (
+    EvaluateLoadAreaCapacity,
+    StartChargingSession,
+)
+from app.load_control.application.policies import (
+    LoadRegulationPolicy,
+    ManualInterventionPolicy,
+    PowerReductionPolicy,
+    StabilizationPolicy,
+)
+from app.load_control.application.ports import EventPublisher, InterventionService
+from app.load_control.domain.load_area import LoadArea
+from app.load_control.domain.repository import LoadAreaRepository
+from app.load_control.domain.value_objects import AreaCode, PowerLevel
+
+
+class LoadControlService:
+    def __init__(
+        self,
+        areas: LoadAreaRepository,
+        events: EventPublisher,
+        interventions: InterventionService,
+    ) -> None:
+        self._areas = areas
+        self._events = events
+        self._interventions = interventions
+
+    async def start_charging_session(self, cmd: StartChargingSession) -> str:
+        area = await self._areas.get(AreaCode(cmd.area_code))
+        session = area.start_session(cmd.charger_id, PowerLevel(cmd.power_kw))
+        await self._regulate_if_needed(area)
+        await self._persist(area)
+        return session.session_id
+
+    async def evaluate_capacity(self, cmd: EvaluateLoadAreaCapacity) -> None:
+        area = await self._areas.get(AreaCode(cmd.area_code))
+        area.reassess()
+        await self._regulate_if_needed(area)
+        await self._persist(area)
+
+    async def _regulate_if_needed(self, area: LoadArea) -> None:
+        # LoadRegulationPolicy (on LoadAreaUpdated): activate regulation at/over max.
+        if not LoadRegulationPolicy.should_activate(area):
+            return
+        area.activate_regulation()
+
+        # PowerReductionPolicy (on LoadThresholdReached): reduce 10% per round.
+        rounds = 0
+        while PowerReductionPolicy.should_reduce(area) and rounds < LoadArea.MAX_REGULATION_ROUNDS:
+            area.reduce_charging_power()
+            rounds += 1
+        area.evaluate_regulation_result(rounds)
+
+        # StabilizationPolicy vs ManualInterventionPolicy (on RegulationResultEvaluated).
+        if StabilizationPolicy.is_stable(area):
+            return
+        if ManualInterventionPolicy.needs_intervention(area):
+            await self._interventions.open_request(
+                area_code=area.area_code.value,
+                reason="Automatic regulation did not bring load below max capacity",
+                load_kw=area.current_load_kw,
+                max_capacity_kw=area.thresholds.max_capacity_kw,
+            )
+
+    async def _persist(self, area: LoadArea) -> None:
+        await self._areas.save(area)
+        await self._events.publish(area.pull_events())
