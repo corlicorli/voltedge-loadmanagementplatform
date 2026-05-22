@@ -1,6 +1,8 @@
+import { LineChart as LineChartIcon } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardHeading } from "@/components/CardHeading";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   type ChartConfig,
   ChartContainer,
@@ -10,7 +12,7 @@ import {
 import type { LoadSample } from "@/lib/api";
 import { fmtTime } from "@/lib/format";
 
-const config: ChartConfig = { load: { label: "Load", color: "hsl(217 91% 55%)" } };
+const config: ChartConfig = { load: { label: "Load", color: "hsl(217 91% 60%)" } };
 
 interface Props {
   data: LoadSample[];
@@ -23,22 +25,25 @@ export function LoadTrendChart({ data, warningKw, criticalKw, maxKw }: Props) {
   const rows = data.map((d) => ({ t: fmtTime(d.sampledAt), load: d.currentLoadKw }));
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Load trend <span className="font-normal normal-case">· last 24h (kW)</span>
-        </CardTitle>
-      </CardHeader>
+      <CardHeading
+        icon={<LineChartIcon className="h-4 w-4" />}
+        color="hsl(217 91% 60%)"
+        title="Load Trend"
+        right={
+          <span className="rounded-full border px-3 py-1 text-xs text-muted-foreground">Last 24h</span>
+        }
+      />
       <CardContent>
-        <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
+        <ChartContainer config={config} className="aspect-auto h-[280px] w-full">
           <AreaChart data={rows} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
             <defs>
               <linearGradient id="fillLoad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--color-load)" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="var(--color-load)" stopOpacity={0.04} />
+                <stop offset="0%" stopColor="var(--color-load)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="var(--color-load)" stopOpacity={0.03} />
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} />
-            <XAxis dataKey="t" tickLine={false} axisLine={false} minTickGap={44} />
+            <XAxis dataKey="t" tickLine={false} axisLine={false} minTickGap={48} />
             <YAxis tickLine={false} axisLine={false} width={42} domain={[0, Math.ceil(maxKw * 1.05)]} />
             <ChartTooltip
               content={<ChartTooltipContent unit=" kW" valueFormatter={(v) => v.toFixed(1)} />}

@@ -1,95 +1,104 @@
-import { Activity, Bell, Gauge, TrendingUp, Zap } from "lucide-react";
+import { Activity, BatteryCharging, TrendingUp, Zap } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { Sparkline } from "@/components/Sparkline";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { AreaStatus, Kpis } from "@/lib/api";
-import { STATUS_BADGE, STATUS_COLOR, fmtKw } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import type { AreaStatus, Kpis, LoadSample } from "@/lib/api";
+import { STATUS_BADGE, fmtKw } from "@/lib/format";
 
-export function KpiCards({ status, kpis }: { status: AreaStatus; kpis: Kpis | null }) {
+const ACCENT = {
+  blue: "hsl(217 91% 60%)",
+  green: "hsl(142 66% 42%)",
+  violet: "hsl(258 80% 64%)",
+  orange: "hsl(32 95% 48%)",
+};
+
+export function KpiCards({
+  status,
+  kpis,
+  series,
+}: {
+  status: AreaStatus;
+  kpis: Kpis | null;
+  series: LoadSample[];
+}) {
+  const tail = series.slice(-40);
   const util = kpis?.currentUtilisationPct ?? (status.currentLoadKw / status.maxCapacityKw) * 100;
-  const headroom = Math.max(0, 100 - util);
   const peak = kpis?.peakLoad24HKw ?? null;
-  const interventions = kpis?.openInterventions ?? 0;
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-      <Card className="col-span-2 lg:col-span-1">
-        <CardContent className="p-5">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <Zap className="h-4 w-4" />
-            Current load
-          </div>
-          <div className="mt-3 flex items-baseline gap-1.5">
-            <span className="text-3xl font-semibold tabular-nums">{status.currentLoadKw.toFixed(1)}</span>
-            <span className="text-sm text-muted-foreground">/ {status.maxCapacityKw.toFixed(0)} kW</span>
-          </div>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full transition-[width] duration-500"
-              style={{ width: `${Math.min(util, 100)}%`, backgroundColor: STATUS_COLOR[status.status] }}
-            />
-          </div>
-          <div className="mt-3">
-            <Badge variant={STATUS_BADGE[status.status]}>{status.status}</Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Stat
-        icon={<Gauge className="h-4 w-4" />}
-        label="Available capacity"
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <Metric
+        icon={<Zap className="h-5 w-5" />}
+        color={ACCENT.blue}
+        label="Current Load"
+        value={`${status.currentLoadKw.toFixed(1)} kW`}
+        foot={<Badge variant={STATUS_BADGE[status.status]}>{status.status} · {util.toFixed(0)}%</Badge>}
+        spark={tail.map((s) => s.currentLoadKw)}
+      />
+      <Metric
+        icon={<BatteryCharging className="h-5 w-5" />}
+        color={ACCENT.green}
+        label="Available Capacity"
         value={fmtKw(status.availableCapacityKw)}
-        sub={`${headroom.toFixed(0)}% headroom`}
+        foot={<Foot>{Math.max(0, 100 - util).toFixed(0)}% headroom</Foot>}
+        spark={tail.map((s) => s.availableCapacityKw)}
       />
-      <Stat
-        icon={<Activity className="h-4 w-4" />}
-        label="Active sessions"
+      <Metric
+        icon={<Activity className="h-5 w-5" />}
+        color={ACCENT.violet}
+        label="Active Sessions"
         value={`${status.activeSessionCount}`}
-        sub="currently charging"
+        foot={<Foot>currently charging</Foot>}
+        spark={tail.map((s) => s.activeSessionCount)}
       />
-      <Stat
-        icon={<TrendingUp className="h-4 w-4" />}
-        label="Peak load · 24h"
+      <Metric
+        icon={<TrendingUp className="h-5 w-5" />}
+        color={ACCENT.orange}
+        label="Peak Load · 24h"
         value={fmtKw(peak)}
-        sub={peak ? `${((peak / status.maxCapacityKw) * 100).toFixed(0)}% of max` : "no data yet"}
-      />
-      <Stat
-        icon={<Bell className="h-4 w-4" />}
-        label="Open interventions"
-        value={`${interventions}`}
-        sub={interventions > 0 ? "action needed" : "all clear"}
-        critical={interventions > 0}
+        foot={<Foot>{peak ? `${((peak / status.maxCapacityKw) * 100).toFixed(0)}% of max` : "no data yet"}</Foot>}
+        spark={tail.map((s) => s.currentLoadKw)}
       />
     </div>
   );
 }
 
-function Stat({
+function Foot({ children }: { children: ReactNode }) {
+  return <span className="text-xs text-muted-foreground">{children}</span>;
+}
+
+function Metric({
   icon,
+  color,
   label,
   value,
-  sub,
-  critical,
+  foot,
+  spark,
 }: {
   icon: ReactNode;
+  color: string;
   label: string;
   value: string;
-  sub: string;
-  critical?: boolean;
+  foot: ReactNode;
+  spark: number[];
 }) {
   return (
     <Card>
       <CardContent className="p-5">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {icon}
-          {label}
+        <div className="flex items-center gap-3">
+          <span
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
+            style={{ backgroundColor: color.replace(")", " / 0.12)"), color }}
+          >
+            {icon}
+          </span>
+          <span className="text-sm font-medium text-muted-foreground">{label}</span>
         </div>
-        <div className={cn("mt-3 text-3xl font-semibold tabular-nums", critical && "text-critical")}>
-          {value}
-        </div>
-        <div className="mt-1.5 text-xs text-muted-foreground">{sub}</div>
+        <div className="mt-3 text-3xl font-semibold tabular-nums">{value}</div>
+        <div className="mt-1">{foot}</div>
+        <div className="-mx-1 mt-2">{spark.length > 1 && <Sparkline data={spark} color={color} />}</div>
       </CardContent>
     </Card>
   );

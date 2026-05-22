@@ -1,4 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { History, Plug, SlidersHorizontal } from "lucide-react";
+
+import { CardHeading } from "@/components/CardHeading";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -13,15 +16,13 @@ import { cn } from "@/lib/utils";
 
 const EVENT_COLOR: Record<string, string> = {
   LoadThresholdReached: "hsl(var(--warning))",
-  LoadRuleActivated: "hsl(var(--primary))",
-  ChargingPowerReduced: "hsl(199 89% 62%)",
+  LoadRuleActivated: "hsl(217 91% 60%)",
+  ChargingPowerReduced: "hsl(199 89% 55%)",
   CurrentLoadUpdated: "hsl(var(--muted-foreground))",
-  RegulationResultEvaluated: "hsl(258 90% 66%)",
+  RegulationResultEvaluated: "hsl(258 80% 64%)",
   LoadAreaStabilized: "hsl(var(--stable))",
   RegulationFailed: "hsl(var(--critical))",
 };
-
-const TITLE = "text-xs font-medium uppercase tracking-wide text-muted-foreground";
 
 function eventDetail(event: RegulationEvent): string {
   const load = event.payload["current_load_kw"];
@@ -31,22 +32,18 @@ function eventDetail(event: RegulationEvent): string {
 export function RegulationTimeline({ events }: { events: RegulationEvent[] }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className={TITLE}>
-          Regulation events <span className="font-normal normal-case">· diagnostic</span>
-        </CardTitle>
-      </CardHeader>
+      <CardHeading icon={<History className="h-4 w-4" />} color="hsl(258 80% 64%)" title="Regulation Events" />
       <CardContent>
         {events.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
             No regulation events yet — start a session via Postman to trigger regulation.
           </p>
         ) : (
-          <div className="max-h-[300px] overflow-y-auto pr-1">
+          <div className="max-h-[320px] overflow-y-auto pr-1">
             {events.map((e, i) => (
               <div
                 key={`${e.eventType}-${e.occurredAt}-${i}`}
-                className="flex items-start gap-3 border-b border-border/50 py-2.5 last:border-0"
+                className="flex items-start gap-3 border-b border-border/60 py-2.5 last:border-0"
               >
                 <span
                   className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
@@ -68,16 +65,19 @@ export function RegulationTimeline({ events }: { events: RegulationEvent[] }) {
   );
 }
 
-export function SessionsTable({ sessions }: { sessions: Session[] }) {
+export function SessionsTable({ sessions, filter }: { sessions: Session[]; filter: string }) {
+  const q = filter.trim().toLowerCase();
+  const rows = q ? sessions.filter((s) => s.chargerId.toLowerCase().includes(q)) : sessions;
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className={TITLE}>
-          Active charging sessions <span className="font-normal normal-case">· {sessions.length} active</span>
-        </CardTitle>
-      </CardHeader>
+    <Card id="sessions">
+      <CardHeading
+        icon={<Plug className="h-4 w-4" />}
+        color="hsl(217 91% 60%)"
+        title="Active Charging Sessions"
+        right={<span className="text-xs text-muted-foreground">{rows.length} shown</span>}
+      />
       <CardContent>
-        <div className="max-h-[300px] overflow-y-auto">
+        <div className="max-h-[320px] overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -88,13 +88,13 @@ export function SessionsTable({ sessions }: { sessions: Session[] }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sessions.map((s) => {
+              {rows.map((s) => {
                 const reduced = s.currentPowerKw < s.requestedPowerKw;
                 return (
                   <TableRow key={s.sessionId}>
                     <TableCell className="font-medium">{s.chargerId}</TableCell>
                     <TableCell>{s.requestedPowerKw.toFixed(1)} kW</TableCell>
-                    <TableCell className={cn(reduced && "text-warning")}>
+                    <TableCell className={cn(reduced && "font-medium text-warning")}>
                       {s.currentPowerKw.toFixed(1)} kW
                     </TableCell>
                     <TableCell className="text-muted-foreground">{reduced ? "REDUCED" : "FULL"}</TableCell>
@@ -112,11 +112,12 @@ export function SessionsTable({ sessions }: { sessions: Session[] }) {
 export function AdjustmentsTable({ adjustments }: { adjustments: Adjustment[] }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className={TITLE}>
-          Load adjustments <span className="font-normal normal-case">· {adjustments.length} most recent</span>
-        </CardTitle>
-      </CardHeader>
+      <CardHeading
+        icon={<SlidersHorizontal className="h-4 w-4" />}
+        color="hsl(142 66% 42%)"
+        title="Load Adjustments"
+        right={<span className="text-xs text-muted-foreground">{adjustments.length} recent</span>}
+      />
       <CardContent>
         {adjustments.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">No load adjustments yet.</p>

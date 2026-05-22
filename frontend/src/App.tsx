@@ -1,9 +1,10 @@
-import { Zap } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { AdjustmentsTable, RegulationTimeline, SessionsTable } from "@/components/ActivityPanels";
 import { KpiCards } from "@/components/KpiCards";
 import { LoadTrendChart } from "@/components/LoadCharts";
+import { Sidebar } from "@/components/Sidebar";
+import { Topbar } from "@/components/Topbar";
 import { DailyPeaksChart, StatusDonut } from "@/components/UsageCharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,7 +19,7 @@ import {
   type StatusDistribution,
   api,
 } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { fmtClock } from "@/lib/format";
 
 const AREA = "YN";
 const POLL_MS = 5000;
@@ -38,6 +39,7 @@ export default function App() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -66,92 +68,88 @@ export default function App() {
     return () => clearInterval(id);
   }, [load]);
 
-  return (
-    <div className="mx-auto w-full max-w-[1840px] px-5 py-6 lg:px-8">
-      <Header updatedAt={updatedAt} areaName={data?.status.areaName} areaCode={data?.status.areaCode} />
-      {error && !data ? (
-        <ErrorState message={error} />
-      ) : !data ? (
-        <LoadingState />
-      ) : (
-        <div className="space-y-4">
-          <KpiCards status={data.status} kpis={data.kpis} />
-          <LoadTrendChart
-            data={data.timeseries}
-            warningKw={data.status.warningThresholdKw}
-            criticalKw={data.status.criticalThresholdKw}
-            maxKw={data.status.maxCapacityKw}
-          />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <DailyPeaksChart
-              data={data.dailyPeaks}
-              warningKw={data.status.warningThresholdKw}
-              criticalKw={data.status.criticalThresholdKw}
-              maxKw={data.status.maxCapacityKw}
-            />
-            <StatusDonut data={data.distribution} />
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <RegulationTimeline events={data.events} />
-            <SessionsTable sessions={data.sessions} />
-          </div>
-          <AdjustmentsTable adjustments={data.adjustments} />
-        </div>
-      )}
-    </div>
-  );
-}
+  const interventions = data?.kpis.openInterventions ?? 0;
 
-function Header({
-  updatedAt,
-  areaName,
-  areaCode,
-}: {
-  updatedAt: Date | null;
-  areaName?: string;
-  areaCode?: string;
-}) {
   return (
-    <header className="mb-6 flex flex-wrap items-center justify-between gap-4 pb-2">
-      <div className="flex items-center gap-3.5">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-foreground text-background shadow-sm">
-          <Zap className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">
-            VoltEdge · Load Management BI
-          </h1>
-          <p className="text-[13px] text-muted-foreground">
-            {areaName ? `${areaName} (${areaCode})` : "Load Control Context"} · Business Intelligence Dashboard
-          </p>
-        </div>
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar
+          query={query}
+          onQuery={setQuery}
+          updatedLabel={updatedAt ? fmtClock(updatedAt) : null}
+          onRefresh={load}
+        />
+        <main className="flex-1 p-4 lg:p-6">
+          {error && !data ? (
+            <ErrorState message={error} />
+          ) : !data ? (
+            <LoadingState />
+          ) : (
+            <div className="space-y-4">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h1 className="text-xl font-semibold tracking-tight">Overview</h1>
+                  <p className="text-sm text-muted-foreground">
+                    {data.status.areaName} ({data.status.areaCode}) · Load Control Context
+                  </p>
+                </div>
+                {interventions > 0 && (
+                  <span className="rounded-full bg-critical/10 px-3 py-1.5 text-sm font-medium text-critical">
+                    {interventions} open intervention{interventions > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+
+              <KpiCards status={data.status} kpis={data.kpis} series={data.timeseries} />
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div id="analytics" className="lg:col-span-2">
+                  <LoadTrendChart
+                    data={data.timeseries}
+                    warningKw={data.status.warningThresholdKw}
+                    criticalKw={data.status.criticalThresholdKw}
+                    maxKw={data.status.maxCapacityKw}
+                  />
+                </div>
+                <StatusDonut data={data.distribution} />
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className="lg:col-span-2">
+                  <DailyPeaksChart
+                    data={data.dailyPeaks}
+                    warningKw={data.status.warningThresholdKw}
+                    criticalKw={data.status.criticalThresholdKw}
+                    maxKw={data.status.maxCapacityKw}
+                  />
+                </div>
+                <RegulationTimeline events={data.events} />
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <SessionsTable sessions={data.sessions} filter={query} />
+                <AdjustmentsTable adjustments={data.adjustments} />
+              </div>
+            </div>
+          )}
+        </main>
       </div>
-      <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-stable opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-stable" />
-          </span>
-          Live · {POLL_MS / 1000}s
-        </span>
-        {updatedAt && <span>Updated {updatedAt.toLocaleTimeString()}</span>}
-      </div>
-    </header>
+    </div>
   );
 }
 
 function LoadingState() {
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className={cn("h-[118px]", i === 0 && "lg:col-span-2")} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[150px] rounded-2xl" />
         ))}
       </div>
-      <Skeleton className="h-[320px]" />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Skeleton className="h-[300px]" />
-        <Skeleton className="h-[300px]" />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Skeleton className="h-[340px] rounded-2xl lg:col-span-2" />
+        <Skeleton className="h-[340px] rounded-2xl" />
       </div>
     </div>
   );

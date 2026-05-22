@@ -2,33 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Light, minimal theme — light-gray page with white cards, dark text and
-   subtle borders (io.net / Sync2s / Vercel style). */
+/* Light admin theme — soft lavender page, white rounded cards with soft
+   shadows, blue/orange/green accents (EV-Admin style). */
 @layer base {
   :root {
-    --background: 240 6% 97%;
-    --foreground: 240 10% 4%;
+    --background: 228 40% 96%;
+    --foreground: 230 25% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 4%;
+    --card-foreground: 230 25% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 4%;
-    --primary: 240 6% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 6% 10%;
-    --muted: 240 5% 94%;
-    --muted-foreground: 240 4% 44%;
-    --accent: 240 5% 96%;
-    --accent-foreground: 240 6% 10%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 240 5% 65%;
-    --radius: 0.75rem;
-    --stable: 142 64% 38%;
-    --warning: 36 92% 42%;
-    --critical: 0 74% 50%;
+    --popover-foreground: 230 25% 12%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 228 30% 95%;
+    --secondary-foreground: 230 25% 12%;
+    --muted: 228 24% 93%;
+    --muted-foreground: 230 12% 46%;
+    --accent: 228 30% 95%;
+    --accent-foreground: 230 25% 12%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 228 22% 90%;
+    --input: 228 22% 90%;
+    --ring: 217 91% 60%;
+    --radius: 1rem;
+    --stable: 142 66% 42%;
+    --warning: 32 95% 48%;
+    --critical: 0 84% 58%;
   }
 }
 
