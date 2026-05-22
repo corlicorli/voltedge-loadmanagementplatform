@@ -112,13 +112,15 @@ function Header({
   areaCode?: string;
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+    <header className="mb-6 flex flex-wrap items-center justify-between gap-4 pb-2">
       <div className="flex items-center gap-3.5">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-sky-600 text-primary-foreground shadow-lg shadow-primary/30">
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-foreground text-background shadow-sm">
           <Zap className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">VoltEdge · Load Management BI</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            VoltEdge · Load Management BI
+          </h1>
           <p className="text-[13px] text-muted-foreground">
             {areaName ? `${areaName} (${areaCode})` : "Load Control Context"} · Business Intelligence Dashboard
           </p>
