@@ -19,19 +19,11 @@
       "value": "YN-23"
     },
     {
-      "key": "newChargerId",
-      "value": ""
-    },
-    {
       "key": "sessionId",
       "value": ""
     },
     {
       "key": "baselineLoad",
-      "value": ""
-    },
-    {
-      "key": "regChargerId",
       "value": ""
     }
   ],
@@ -315,83 +307,10 @@
       ]
     },
     {
-      "name": "Charger Management",
+      "name": "Regulering — ledig lader rammer max",
       "item": [
         {
-          "name": "1. Register a new charger",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.collectionVariables.set('newChargerId', 'YN-' + Math.floor(100 + Math.random() * 900));",
-                  "console.log('Registering charger ' + pm.collectionVariables.get('newChargerId'));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
-                  "const c = pm.response.json();",
-                  "pm.test('charger registered', () => pm.expect(c.chargerId).to.eql(pm.collectionVariables.get('newChargerId')));",
-                  "console.log('Registered ' + c.chargerId + ' (' + c.maxPowerKw + ' kW)');"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"chargerId\": \"{{newChargerId}}\",\n  \"maxPowerKw\": 11\n}"
-            },
-            "url": "{{base_url}}/load-areas/{{area_code}}/chargers"
-          }
-        },
-        {
-          "name": "2. New charger starts charging",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
-                  "const r = pm.response.json();",
-                  "pm.test('returns areaStatus', () => pm.expect(r.areaStatus).to.have.property('currentLoadKw'));",
-                  "const a = r.areaStatus;",
-                  "console.log('Charger ' + pm.collectionVariables.get('newChargerId') + ' charging; area now ' + a.currentLoadKw + ' kW (' + a.status + '), ' + a.activeSessionCount + ' sessions');"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"chargerId\": \"{{newChargerId}}\",\n  \"powerLevelKw\": 11\n}"
-            },
-            "url": "{{base_url}}/load-areas/{{area_code}}/sessions"
-          }
-        },
-        {
-          "name": "3. List chargers",
+          "name": "1. Ladere i området (præcis 24 standere)",
           "event": [
             {
               "listen": "test",
@@ -399,9 +318,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status is 200', () => pm.response.to.have.status(200));",
-                  "const list = pm.response.json();",
-                  "pm.test('includes the new charger', () => pm.expect(list.some(c => c.chargerId === pm.collectionVariables.get('newChargerId'))).to.be.true);",
-                  "console.log('Total chargers in area: ' + list.length);"
+                  "const ch = pm.response.json();",
+                  "pm.test('omraadet har 24 standere (ingen nye registreres)', () => pm.expect(ch.length).to.eql(24));",
+                  "const free = ch.filter(c => c.status === 'AVAILABLE').map(c => c.chargerId);",
+                  "console.log('Ledige standere: ' + (free.join(', ') || 'ingen'));"
                 ]
               }
             }
@@ -413,7 +333,7 @@
           }
         },
         {
-          "name": "4. Area status (reflected in BI + Grafana)",
+          "name": "2. Aktuel status (baseline ~233 kW, WARNING)",
           "event": [
             {
               "listen": "test",
@@ -421,8 +341,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status is 200', () => pm.response.to.have.status(200));",
-                  "const s = pm.response.json();",
-                  "console.log('BI dashboard now shows ' + s.currentLoadKw + ' kW, ' + s.activeSessionCount + ' sessions (' + s.status + '). These calls also show up in Grafana API monitoring.');"
+                  "const a = pm.response.json();",
+                  "console.log(`Baseline: ${a.currentLoadKw} kW / ${a.maxCapacityKw} kW (${a.status})`);"
                 ]
               }
             }
@@ -432,67 +352,22 @@
             "header": [],
             "url": "{{base_url}}/load-areas/{{area_code}}/status"
           }
-        }
-      ]
-    },
-    {
-      "name": "Regulering — lynlader rammer max",
-      "item": [
-        {
-          "name": "1. Registrer en 50 kW lynlader",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// Unik id pr. kørsel, så mappen kan køres igen og igen.",
-                  "pm.collectionVariables.set('regChargerId', 'YN-FC-' + Math.floor(100 + Math.random() * 900));",
-                  "console.log('Registrerer lynlader ' + pm.collectionVariables.get('regChargerId'));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
-                  "const c = pm.response.json();",
-                  "pm.test('charger registered', () => pm.expect(c.chargerId).to.eql(pm.collectionVariables.get('regChargerId')));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/load-areas/{{area_code}}/chargers",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"chargerId\": \"{{regChargerId}}\",\n  \"maxPowerKw\": 50\n}"
-            }
-          }
         },
         {
-          "name": "2. Lynladeren starter (rammer max -> regulering)",
+          "name": "3. Ledig lader YN-23 tages i brug (rammer max -> regulering)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "// Kanonisk forloeb mod frisk seed: 233 + 11 = 244 kW (CRITICAL) -> 10% regulering -> 219,6 kW.",
                   "pm.test('status is 201', () => pm.response.to.have.status(201));",
                   "const r = pm.response.json();",
                   "const a = r.areaStatus;",
                   "pm.collectionVariables.set('sessionId', r.sessionId);",
                   "pm.test('regulering holder omraadet paa/under max', () => pm.expect(a.currentLoadKw).to.be.at.most(a.maxCapacityKw + 0.001));",
-                  "console.log(`Lynlader startet; omraadet er nu ${a.currentLoadKw} kW (${a.status}) efter regulering`);"
+                  "console.log(`Lader ${pm.collectionVariables.get('charger_id')} startet; omraadet er nu ${a.currentLoadKw} kW (${a.status})`);"
                 ]
               }
             }
@@ -508,12 +383,12 @@
             "url": "{{base_url}}/load-areas/{{area_code}}/sessions",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"chargerId\": \"{{regChargerId}}\",\n  \"powerLevelKw\": 50\n}"
+              "raw": "{\n  \"chargerId\": \"{{charger_id}}\",\n  \"powerLevelKw\": 11\n}"
             }
           }
         },
         {
-          "name": "3. Regulation events (vises nu i BI)",
+          "name": "4. Regulation events (vises nu i BI)",
           "event": [
             {
               "listen": "test",
@@ -535,7 +410,7 @@
           }
         },
         {
-          "name": "4. Load adjustments (effekt-reduktioner)",
+          "name": "5. Load adjustments (effekt-reduktioner)",
           "event": [
             {
               "listen": "test",
@@ -557,7 +432,7 @@
           }
         },
         {
-          "name": "5. Area status (stabiliseret)",
+          "name": "6. Status (stabiliseret ~219,6 kW)",
           "event": [
             {
               "listen": "test",
