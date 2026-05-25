@@ -4,7 +4,7 @@
   "tags": ["voltedge", "ops"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "5s",
   "time": { "from": "now-30m", "to": "now" },
   "templating": { "list": [] },
@@ -14,14 +14,10 @@
       "id": 1,
       "type": "stat",
       "title": "API status",
-      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
       "targets": [
-        {
-          "refId": "A",
-          "expr": "up{job=\"load-control\"}",
-          "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" }
-        }
+        { "refId": "A", "expr": "up{job=\"load-control\"}", "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } }
       ],
       "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "fieldConfig": {
@@ -37,107 +33,150 @@
     {
       "id": 2,
       "type": "stat",
-      "title": "Total requests",
-      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "title": "Requests/sec (sidste 5 min)",
+      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
       "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(http_requests_total)",
-          "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" }
-        }
+        { "refId": "A", "expr": "sum(rate(http_requests_total[5m]))", "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2 }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Total requests håndteret",
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(http_requests_total)", "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } }
       ],
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
     },
     {
-      "id": 3,
-      "type": "piechart",
-      "title": "Requests by status class",
-      "gridPos": { "h": 5, "w": 12, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(http_requests_total) by (status)",
-          "legendFormat": "{{status}}",
-          "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" }
-        }
-      ],
-      "options": { "legend": { "displayMode": "list", "placement": "right" }, "pieType": "donut" },
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
-    },
-    {
       "id": 4,
-      "type": "timeseries",
-      "title": "Request rate (req/s) by handler",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "type": "stat",
+      "title": "Error rate (4xx + 5xx)",
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(http_requests_total[1m])) by (handler)",
-          "legendFormat": "{{handler}}",
+          "expr": "100 * sum(rate(http_requests_total{status=~\"4xx|5xx\"}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 0.001)",
           "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" }
         }
       ],
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "fieldConfig": {
-        "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 } },
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 } ] }
+        },
         "overrides": []
-      },
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+      }
     },
     {
       "id": 5,
-      "type": "timeseries",
-      "title": "Error rate (req/s) by status class",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "type": "stat",
+      "title": "P95 latency",
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(http_requests_total{status=~\"4xx|5xx\"}[5m])) by (status)",
-          "legendFormat": "{{status}}",
+          "expr": "1000 * histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))",
           "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" }
         }
       ],
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "fieldConfig": {
-        "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 } },
+        "defaults": {
+          "unit": "ms",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 200 }, { "color": "red", "value": 500 } ] }
+        },
         "overrides": []
-      },
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+      }
     },
     {
       "id": 6,
       "type": "timeseries",
-      "title": "Request latency (p50 / p95 / p99)",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 13 },
+      "title": "Requests/sec pr. endpoint",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
       "targets": [
-        {
-          "refId": "A",
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p50",
-          "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" }
-        },
-        {
-          "refId": "B",
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p95",
-          "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" }
-        },
-        {
-          "refId": "C",
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p99",
-          "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" }
-        }
+        { "refId": "A", "expr": "sum(rate(http_requests_total[1m])) by (handler)", "legendFormat": "{{handler}}", "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } }
       ],
-      "fieldConfig": {
-        "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 0, "lineWidth": 2 } },
-        "overrides": []
-      },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Latency-percentiler (p50 / p95 / p99)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))", "legendFormat": "p99", "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 0, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Status code-fordeling (req/s)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(http_requests_total[1m])) by (status)", "legendFormat": "{{status}}", "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "bars", "fillOpacity": 70, "lineWidth": 1, "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Top endpoints (samlet requests)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(http_requests_total) by (handler, method)", "format": "table", "instant": true, "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "handler": "Endpoint", "method": "Metode", "Value": "Requests" } } },
+        { "id": "sortBy", "options": { "fields": "", "sort": [ { "field": "Requests", "desc": true } ] } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "align": "auto" } }, "overrides": [] },
+      "options": { "showHeader": true }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Error rate (req/s) by status class",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(http_requests_total{status=~\"4xx|5xx\"}[5m])) by (status)", "legendFormat": "{{status}}", "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 11,
+      "type": "piechart",
+      "title": "Requests by status class",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(http_requests_total) by (status)", "legendFormat": "{{status}}", "datasource": { "type": "prometheus", "uid": "voltedge-prometheus" } }
+      ],
+      "options": { "legend": { "displayMode": "list", "placement": "right" }, "pieType": "donut" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
     }
   ]
 }
