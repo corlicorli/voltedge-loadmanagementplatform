@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.load_control.application.commands import (
+    CreateLoadArea,
     EvaluateLoadAreaCapacity,
     RegisterCharger,
     StartChargingSession,
@@ -22,8 +23,13 @@ from app.load_control.application.policies import (
 )
 from app.load_control.application.ports import EventPublisher, InterventionService
 from app.load_control.domain.load_area import LoadArea
-from app.load_control.domain.repository import LoadAreaRepository
-from app.load_control.domain.value_objects import AreaCode, PowerLevel
+from app.load_control.domain.repository import LoadAreaAlreadyExists, LoadAreaRepository
+from app.load_control.domain.value_objects import (
+    AreaCode,
+    LoadThresholds,
+    PowerLevel,
+    ThresholdPercentage,
+)
 
 
 class LoadControlService:
@@ -36,6 +42,19 @@ class LoadControlService:
         self._areas = areas
         self._events = events
         self._interventions = interventions
+
+    async def create_load_area(self, cmd: CreateLoadArea) -> str:
+        code = AreaCode(cmd.area_code)
+        if await self._areas.exists(code):
+            raise LoadAreaAlreadyExists(f"Load area '{code.value}' already exists")
+        thresholds = LoadThresholds(
+            max_capacity_kw=cmd.max_capacity_kw,
+            warning=ThresholdPercentage(cmd.warning_fraction),
+            critical=ThresholdPercentage(cmd.critical_fraction),
+        )
+        area = LoadArea.create(code, cmd.area_name, thresholds, cmd.reduction_fraction)
+        await self._persist(area)
+        return code.value
 
     async def start_charging_session(self, cmd: StartChargingSession) -> str:
         area = await self._areas.get(AreaCode(cmd.area_code))

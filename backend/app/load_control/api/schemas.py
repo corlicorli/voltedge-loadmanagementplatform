@@ -14,6 +14,22 @@ class CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
+class CreateLoadAreaRequest(CamelModel):
+    area_code: str = Field(min_length=1, examples=["YN"])
+    area_name: str = Field(min_length=1, examples=["Ydre Nørrebro"])
+    max_capacity_kw: float = Field(gt=0, le=100000, examples=[240])
+    warning_fraction: float = Field(default=0.85, gt=0, le=2)
+    critical_fraction: float = Field(default=1.00, gt=0, le=2)
+    reduction_fraction: float = Field(default=0.10, ge=0, lt=1)
+
+
+class AreaSummary(CamelModel):
+    area_code: str
+    area_name: str
+    max_capacity_kw: float
+    status: str
+
+
 class StartSessionRequest(CamelModel):
     charger_id: str = Field(min_length=1, examples=["YN-23"])
     power_level_kw: float = Field(gt=0, le=350, examples=[11])

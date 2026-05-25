@@ -18,6 +18,18 @@ class MongoLoadAreaQueries(LoadAreaQueries):
     def __init__(self, db: Database) -> None:
         self._db = db
 
+    async def list_areas(self) -> list[dict[str, Any]]:
+        docs = await self._db.load_areas.find().sort("_id", 1).to_list(length=None)
+        return [
+            {
+                "area_code": d["_id"],
+                "area_name": d["area_name"],
+                "max_capacity_kw": d["max_capacity_kw"],
+                "status": d["status"],
+            }
+            for d in docs
+        ]
+
     async def status(self, area_code: str) -> dict[str, Any] | None:
         area = await self._db.load_areas.find_one({"_id": area_code})
         if area is None:

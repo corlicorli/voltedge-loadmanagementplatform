@@ -41,7 +41,6 @@ services:
       MONGO_DB: ${MONGO_DB:-voltedge}
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      SEED_ON_STARTUP: "true"
     ports:
       - "8000:8000"
     depends_on:

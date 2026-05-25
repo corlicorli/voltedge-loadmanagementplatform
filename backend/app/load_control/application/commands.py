@@ -11,6 +11,18 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class CreateLoadArea:
+    """Trigger/actor: an operator (customer) registers a new load area."""
+
+    area_code: str
+    area_name: str
+    max_capacity_kw: float
+    warning_fraction: float = 0.85
+    critical_fraction: float = 1.00
+    reduction_fraction: float = 0.10
+
+
+@dataclass(frozen=True)
 class StartChargingSession:
     """Trigger/actor: a user connects a vehicle to a charger."""
 

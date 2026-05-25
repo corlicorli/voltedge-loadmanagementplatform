@@ -70,6 +70,47 @@ class LoadArea:
         self._adjustments: list[LoadAdjustment] = []
         self.status = status or self.thresholds.classify(self.current_load_kw)
 
+    # ----- factory: CreateLoadArea ------------------------------------------
+
+    @classmethod
+    def create(
+        cls,
+        area_code: AreaCode,
+        area_name: str,
+        thresholds: LoadThresholds,
+        reduction_fraction: float = 0.10,
+    ) -> LoadArea:
+        """Factory for a brand-new, empty LoadArea with its default load rules
+        (CRITICAL_REGULATION + WARNING_LIMIT). No chargers or sessions yet — those
+        are added through the API during onboarding."""
+        rules = [
+            LoadRule(
+                rule_id=str(uuid.uuid4()),
+                area_code=area_code.value,
+                rule_type=LoadRuleType.CRITICAL_REGULATION,
+                threshold_fraction=thresholds.critical.fraction,
+                reduction_fraction=reduction_fraction,
+                active=True,
+            ),
+            LoadRule(
+                rule_id=str(uuid.uuid4()),
+                area_code=area_code.value,
+                rule_type=LoadRuleType.WARNING_LIMIT,
+                threshold_fraction=thresholds.warning.fraction,
+                reduction_fraction=0.0,
+                active=True,
+            ),
+        ]
+        return cls(
+            area_code=area_code,
+            area_name=area_name,
+            thresholds=thresholds,
+            chargers=[],
+            sessions=[],
+            rules=rules,
+            status=LoadStatus.STABLE,
+        )
+
     # ----- derived state ----------------------------------------------------
 
     @property

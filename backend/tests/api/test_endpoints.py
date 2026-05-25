@@ -53,18 +53,34 @@ def test_unknown_charger_is_rejected(api_client):
     assert response.status_code == 422
 
 
-def test_register_charger_and_list(api_client):
-    import uuid as _uuid
+def test_list_areas_includes_yn(api_client):
+    response = api_client.get("/load-areas")
+    assert response.status_code == 200
+    assert "YN" in [a["areaCode"] for a in response.json()]
 
-    charger_id = f"YN-T{_uuid.uuid4().hex[:6]}"
+
+def test_create_duplicate_area_conflicts(api_client):
+    response = api_client.post(
+        "/load-areas",
+        json={"areaCode": "YN", "areaName": "Ydre Nørrebro", "maxCapacityKw": 240},
+    )
+    assert response.status_code == 409
+
+
+def test_onboard_separate_area_and_register_charger(api_client):
+    # Onboard a separate area so YN keeps exactly its 24 stations.
     created = api_client.post(
-        "/load-areas/YN/chargers", json={"chargerId": charger_id, "maxPowerKw": 11}
+        "/load-areas",
+        json={"areaCode": "TST", "areaName": "Test Area", "maxCapacityKw": 100},
     )
     assert created.status_code == 201
-    assert created.json()["chargerId"] == charger_id
-    listed = api_client.get("/load-areas/YN/chargers")
+    charger = api_client.post(
+        "/load-areas/TST/chargers", json={"chargerId": "TST-01", "maxPowerKw": 11}
+    )
+    assert charger.status_code == 201
+    listed = api_client.get("/load-areas/TST/chargers")
     assert listed.status_code == 200
-    assert any(c["chargerId"] == charger_id for c in listed.json())
+    assert any(c["chargerId"] == "TST-01" for c in listed.json())
 
 
 def test_adjustments_endpoint(api_client):

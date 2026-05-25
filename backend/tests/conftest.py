@@ -31,6 +31,23 @@ def _db_reachable() -> bool:
         return False
 
 
+def _build_baseline(client) -> None:
+    """Build the YN demo baseline via the API (the system ships empty — no seed).
+
+    Mirrors scripts/populate_demo.py: register YN + its 24 chargers + 22 baseline
+    sessions (21x11 + 1x2 = 233 kW), leaving YN-23/YN-24 free for the tests.
+    """
+    client.post(
+        "/load-areas",
+        json={"areaCode": "YN", "areaName": "Ydre Nørrebro", "maxCapacityKw": 240},
+    )
+    for g in range(1, 25):
+        client.post("/load-areas/YN/chargers", json={"chargerId": f"YN-{g:02d}", "maxPowerKw": 11})
+    for g in range(1, 22):
+        client.post("/load-areas/YN/sessions", json={"chargerId": f"YN-{g:02d}", "powerLevelKw": 11})
+    client.post("/load-areas/YN/sessions", json={"chargerId": "YN-22", "powerLevelKw": 2})
+
+
 @pytest.fixture(scope="session")
 def api_client():
     if not _db_reachable():
@@ -38,7 +55,8 @@ def api_client():
 
     from pymongo import MongoClient
 
-    # Start from a clean, freshly seeded test database (never the dev DB).
+    # Start from a clean test database (never the dev DB); the baseline is built
+    # through the API below, exactly as a real customer / the populator would.
     cleaner: MongoClient = MongoClient(os.environ["MONGO_URL"])
     cleaner.drop_database(os.environ["MONGO_DB"])
     cleaner.close()
@@ -48,4 +66,5 @@ def api_client():
     from app.main import app
 
     with TestClient(app) as client:
+        _build_baseline(client)
         yield client

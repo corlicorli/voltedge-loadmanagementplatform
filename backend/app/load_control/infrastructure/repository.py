@@ -39,8 +39,31 @@ class MongoLoadAreaRepository(LoadAreaRepository):
         now = utcnow()
         await self._db.load_areas.update_one(
             {"_id": area.area_code.value},
-            {"$set": {"status": area.status.value, "updated_at": now}},
+            {
+                "$set": {"status": area.status.value, "updated_at": now},
+                "$setOnInsert": {
+                    "area_name": area.area_name,
+                    "max_capacity_kw": area.thresholds.max_capacity_kw,
+                    "warning_fraction": area.thresholds.warning.fraction,
+                    "critical_fraction": area.thresholds.critical.fraction,
+                },
+            },
+            upsert=True,
         )
+        for rule in area.rules:
+            await self._db.load_rules.update_one(
+                {"_id": rule.rule_id},
+                {
+                    "$set": {
+                        "area_code": rule.area_code,
+                        "rule_type": rule.rule_type.value,
+                        "threshold_fraction": rule.threshold_fraction,
+                        "reduction_fraction": rule.reduction_fraction,
+                        "active": rule.active,
+                    }
+                },
+                upsert=True,
+            )
         for charger in area.chargers:
             await self._db.chargers.update_one(
                 {"_id": charger.charger_id},

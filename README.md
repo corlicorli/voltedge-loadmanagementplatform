@@ -64,7 +64,11 @@ cd voltedge-loadmanagementplatform
 docker compose up --build -d
 ```
 
-Ved opstart opretter backenden databaseindeksene og seeder **LoadArea YN** (24 ladestandere, 240 kW max, ~233 kW baseline + 7 dages historik til BI-graferne).
+Systemet starter **tomt** — ingen pre-seedet/simuleret data. Det afspejler et reelt forløb: en kunde bygger sin overvågning op via API'et. Du onboarder enten **trin for trin** (Postman-mappen *Onboarding*) eller bygger hele YN-baseline (24 standere, ~233 kW) med ét kald til populatoren:
+
+```bash
+docker compose exec backend python scripts/populate_demo.py
+```
 
 | Service | URL | Til hvad |
 |---|---|---|
@@ -79,27 +83,36 @@ Ved opstart opretter backenden databaseindeksene og seeder **LoadArea YN** (24 l
 
 **Kør mod MongoDB Atlas (cloud)** i stedet for den lokale container: sæt `MONGO_URL=mongodb+srv://…` i `.env`. Resten er uændret — samme image lokalt og i skyen. Nulstil lokalt med `docker compose down -v`.
 
-## Demo — rapportens scenarie for LoadArea YN
+## Demo — fra tom database til regulering
 
-> baseline **233 kW** (WARNING) → ny 11 kW-session → **244 kW** (CRITICAL) → automatisk **10% regulering** → **219,6 kW** (stabiliseret).
+Systemet starter **tomt**; hele forløbet (rapportens scenarie) bygges op via API'et — intet simuleres.
+
+**1. Onboarding** — en kunde registrerer sit load area (Postman-mappen *Onboarding*, eller direkte):
 
 ```bash
-# 1. Aktuel status (forventet ~233 kW, WARNING)
-curl http://localhost:8000/load-areas/YN/status
-
-# 2. Start en ny opladning → udløser regulering
-curl -X POST http://localhost:8000/load-areas/YN/sessions \
+curl -X POST http://localhost:8000/load-areas \
   -H 'content-type: application/json' \
-  -d '{"chargerId":"YN-23","powerLevelKw":11}'
-
-# 3. Se reguleringen i event-loggen (diagnostisk)
-curl http://localhost:8000/analytics/YN/regulation-events
+  -d '{"areaCode":"YN","areaName":"Ydre Nørrebro","maxCapacityKw":240}'
 ```
 
-**Postman / newman:** fuldt flow er klar til import — [`postman/VoltEdge-LoadManagement.postman_collection.json`](postman/VoltEdge-LoadManagement.postman_collection.json) med mapperne **Load Control · Analytics · Regulering**. YN har **24 faste standere** (ingen nye registreres). Mappen *«Regulering — ledig lader rammer max»* tager den ledige lader **YN-23** i brug, så området rammer max og udløser en regulering **on-demand** — kør den for at få **regulation events** frem i BI-panelet (de findes kun efter en faktisk regulering, ikke i seed-data). CLI:
+**2. Byg baseline** — 24 standere + ~233 kW (WARNING) via populatoren (rene API-kald):
 
 ```bash
-./postman/run-demo.sh        # 18 requests mod en kørende stack
+docker compose exec backend python scripts/populate_demo.py
+```
+
+**3. Regulering** — en ledig lader (YN-23) tages i brug → **244 kW (CRITICAL)** → **10% regulering** → **219,6 kW**:
+
+```bash
+curl -X POST http://localhost:8000/load-areas/YN/sessions \
+  -H 'content-type: application/json' -d '{"chargerId":"YN-23","powerLevelKw":11}'
+curl http://localhost:8000/analytics/YN/regulation-events    # nu fyldt
+```
+
+**Postman / newman:** collectionen har mapperne **Setup · Onboarding · Regulering · Analytics** ([`postman/VoltEdge-LoadManagement.postman_collection.json`](postman/VoltEdge-LoadManagement.postman_collection.json)). YN har **24 faste standere** — onboarding/populator registrerer netop dem, ingen ud over de 24. `run-demo.sh` bygger baseline (populator) og kører hele collectionen:
+
+```bash
+./postman/run-demo.sh
 ```
 
 Åbn BI-dashboardet mens du kører demoen for at se værdierne opdatere live (poll hvert 5. sekund, dansk 24-timers tidsformat).
@@ -111,9 +124,15 @@ cd backend && pip install -r requirements-dev.txt
 pytest --cov=app --cov-report=term-missing
 ```
 
-Forventet: `35 passed`, ~94% dækning. Unit-tests dækker domæne + hele reguleringskaskaden (ingen DB). Integration-tests kører via HTTP mod MongoDB og **skipper pænt**, hvis ingen DB er på `MONGO_URL`. CI kører automatisk ved push til `main` ([Actions](https://github.com/corlicorli/voltedge-loadmanagementplatform/actions)).
+Forventet: `38 passed`. Unit-tests dækker domæne + hele reguleringskaskaden (ingen DB). Integration-tests bygger YN op via API'et og kører mod MongoDB; de **skipper pænt**, hvis ingen DB er på `MONGO_URL`. CI kører automatisk ved push til `main` ([Actions](https://github.com/corlicorli/voltedge-loadmanagementplatform/actions)).
 
 ## Endpoints
+
+### Onboarding (`/load-areas`)
+| Endpoint | Metode | Beskrivelse |
+|---|---|---|
+| `/load-areas` | POST | Registrér et nyt load area (opretter reguleringsreglerne) |
+| `/load-areas` | GET | List alle registrerede områder |
 
 ### Load Control (`/load-areas/{areaCode}`)
 | Endpoint | Metode | Beskrivelse |
@@ -143,7 +162,7 @@ Forventet: `35 passed`, ~94% dækning. Unit-tests dækker domæne + hele reguler
 
 ## Datamodel — 8 MongoDB collections
 
-`_id` = den naturlige nøgle (area code / charger id / uuid). Skrivemodellen; læsemodellen (CQRS) er aggregeringspipelines.
+`_id` = den naturlige nøgle (area code / charger id / uuid). Skrivemodellen; læsemodellen (CQRS) er aggregeringspipelines. **Alle collections starter tomme** og fyldes via API'et (onboarding + populator) — intet seedes.
 
 | Collection | Indhold | Kategori |
 |---|---|---|
@@ -164,7 +183,6 @@ Indekser oprettes idempotent ved opstart (`backend/app/platform/database.py`).
 |---|---|---|
 | `MONGO_URL` | `mongodb://mongo:27017` | Connection-string (sæt til `mongodb+srv://…` for Atlas) |
 | `MONGO_DB` | `voltedge` | Database-navn |
-| `SEED_ON_STARTUP` | `true` | Seed YN-området ved første tomme opstart |
 | `APP_ENV` · `LOG_LEVEL` | `development` · `INFO` | Miljø + logniveau |
 | `VITE_API_BASE_URL` | `http://localhost:8000` | API-base for React-build |
 | `GRAFANA_PORT` | `3001` | Host-port for Grafana |
@@ -178,7 +196,8 @@ backend/
   app/load_control/{domain,application,infrastructure,api}   — DDD-lag for Load Control Context
   app/analytics/{application,api}                            — dataanalyse-domæneservice (§6)
   app/platform/{config,database,logging_config,dependencies} — Motor-klient, config, JSON-logning
-  tests/                — pytest (35: unit + integration)
+  scripts/populate_demo.py — bygger YN-baseline via API'et (tomt -> 24 standere + 233 kW)
+  tests/                — pytest (38: unit + integration)
   Dockerfile
 frontend/               — React + TS BI-dashboard (Vite, shadcn/ui, Recharts, nginx)
 ops/prometheus/         — scrape-konfig + alert rules

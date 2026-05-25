@@ -12,6 +12,10 @@ from typing import Any
 
 class LoadAreaQueries(ABC):
     @abstractmethod
+    async def list_areas(self) -> list[dict[str, Any]]:
+        """Summary of every registered load area."""
+
+    @abstractmethod
     async def status(self, area_code: str) -> dict[str, Any] | None:
         """LoadAreaStatusView + CurrentLoadView for one area."""
 

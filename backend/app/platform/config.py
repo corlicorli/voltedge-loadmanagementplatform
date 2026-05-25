@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     # .env or a deployment secret — never committed.
     mongo_url: str = "mongodb://localhost:27017"
     mongo_db: str = "voltedge"
-    seed_on_startup: bool = True
 
 
 settings = Settings()

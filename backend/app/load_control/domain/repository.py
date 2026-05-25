@@ -15,6 +15,10 @@ class LoadAreaNotFound(Exception):
     """Raised when a requested LoadArea does not exist."""
 
 
+class LoadAreaAlreadyExists(Exception):
+    """Raised when registering a LoadArea whose code is already taken."""
+
+
 class LoadAreaRepository(ABC):
     @abstractmethod
     async def get(self, area_code: AreaCode) -> LoadArea:

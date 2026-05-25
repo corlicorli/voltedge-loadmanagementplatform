@@ -11,7 +11,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.analytics.api.routes import router as analytics_router
 from app.load_control.api.routes import router as load_control_router
-from app.load_control.domain.repository import LoadAreaNotFound
+from app.load_control.domain.repository import LoadAreaAlreadyExists, LoadAreaNotFound
 from app.platform.config import settings
 from app.platform.database import db
 from app.platform.logging_config import configure_logging
@@ -26,8 +26,8 @@ async def lifespan(app: FastAPI):
     if not await db.ping():
         raise RuntimeError("MongoDB is not reachable; check MONGO_URL")
     await db.init_indexes()
-    if settings.seed_on_startup:
-        await db.seed()
+    # No seeding: the system starts empty and is built up through the API
+    # (onboarding + the demo populator), so the demo reflects real usage.
     logger.info("Load Control Service started (env=%s)", settings.app_env)
     yield
     await db.disconnect()
@@ -58,6 +58,13 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=404,
             content={"error": "load_area_not_found", "detail": str(exc)},
+        )
+
+    @app.exception_handler(LoadAreaAlreadyExists)
+    async def _conflict_handler(request, exc: LoadAreaAlreadyExists):
+        return JSONResponse(
+            status_code=409,
+            content={"error": "load_area_already_exists", "detail": str(exc)},
         )
 
     @app.exception_handler(ValueError)

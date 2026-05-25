@@ -6,13 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.load_control.api.schemas import (
     AdjustmentResponse,
     AreaStatusResponse,
+    AreaSummary,
     ChargerResponse,
+    CreateLoadAreaRequest,
     RegisterChargerRequest,
     SessionResponse,
     StartSessionRequest,
     StartSessionResponse,
 )
 from app.load_control.application.commands import (
+    CreateLoadArea,
     EvaluateLoadAreaCapacity,
     RegisterCharger,
     StartChargingSession,
@@ -29,6 +32,35 @@ async def _require_status(queries: MongoLoadAreaQueries, area_code: str) -> dict
     if row is None:
         raise HTTPException(status_code=404, detail=f"Load area '{area_code}' not found")
     return row
+
+
+@router.post(
+    "",
+    response_model=AreaStatusResponse,
+    status_code=201,
+    summary="Register a new load area (onboarding)",
+)
+async def create_load_area(
+    body: CreateLoadAreaRequest,
+    service: LoadControlService = Depends(get_service),
+    queries: MongoLoadAreaQueries = Depends(get_queries),
+) -> AreaStatusResponse:
+    area_code = await service.create_load_area(
+        CreateLoadArea(
+            area_code=body.area_code,
+            area_name=body.area_name,
+            max_capacity_kw=body.max_capacity_kw,
+            warning_fraction=body.warning_fraction,
+            critical_fraction=body.critical_fraction,
+            reduction_fraction=body.reduction_fraction,
+        )
+    )
+    return AreaStatusResponse.model_validate(await _require_status(queries, area_code))
+
+
+@router.get("", response_model=list[AreaSummary], summary="List all registered load areas")
+async def list_areas(queries: MongoLoadAreaQueries = Depends(get_queries)) -> list[AreaSummary]:
+    return [AreaSummary.model_validate(r) for r in await queries.list_areas()]
 
 
 @router.post(

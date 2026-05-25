@@ -127,3 +127,17 @@ def test_register_duplicate_charger_rejected():
     area = make_area([11.0])
     with pytest.raises(ValueError):
         area.register_charger("YN-01", 11.0)
+
+
+def test_create_factory_starts_empty_with_default_rules():
+    area = LoadArea.create(
+        AreaCode("YN"), "Ydre Nørrebro", LoadThresholds(max_capacity_kw=240.0), reduction_fraction=0.10
+    )
+    assert area.charger_count == 0
+    assert area.current_load_kw == 0.0
+    assert area.status is LoadStatus.STABLE
+    rule_types = {r.rule_type for r in area.rules}
+    assert LoadRuleType.CRITICAL_REGULATION in rule_types
+    assert LoadRuleType.WARNING_LIMIT in rule_types
+    crit = next(r for r in area.rules if r.rule_type is LoadRuleType.CRITICAL_REGULATION)
+    assert crit.reduction_fraction == 0.10
