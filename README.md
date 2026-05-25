@@ -48,7 +48,7 @@ Modellen er **regelbaseret** (ikke forecasting), i tråd med rapporten. **BI (Re
 └──────────────┘                 └────────────────┘
 ```
 
-DDD-lagdeling (detaljer i [docs/architecture.md](docs/architecture.md)): `api` (FastAPI + Pydantic, systemgrænse) → `application` (use cases, de 4 policies, ports, CQRS) → `domain` (LoadArea-aggregat, entiteter, value objects, events — ingen framework, ingen DB) → `infrastructure` (Motor-repository, mappers, event store, læse-aggregeringer).
+DDD-lagdeling: `api` (FastAPI + Pydantic, systemgrænse) → `application` (use cases, de 4 policies, ports, CQRS) → `domain` (LoadArea-aggregat, entiteter, value objects, events — ingen framework, ingen DB) → `infrastructure` (Motor-repository, mappers, event store, læse-aggregeringer).
 
 ## Krav
 
@@ -203,7 +203,6 @@ frontend/               — React + TS BI-dashboard (Vite, shadcn/ui, Recharts, 
 ops/prometheus/         — scrape-konfig + alert rules
 ops/grafana/            — datasource, dashboard, provisionering (as code)
 postman/                — collection + miljø + newman-runner
-docs/                   — architecture.md, ddd-mapping.md
 docker-compose.yml      — hele stacken · .github/workflows/ci.yml — CI
 ```
 
@@ -219,4 +218,4 @@ docker-compose.yml      — hele stacken · .github/workflows/ci.yml — CI
 | Logning / monitorering / alarmer | JSON-logs + Prometheus + Grafana + alert rules (§5) |
 | Fejlhåndtering / rollback | Globale handlers (404/422); stateless services, idempotente indexer, `down -v` nulstiller |
 | CI/CD | GitHub Actions: `ruff` + `pytest` (mongo-service) + `docker compose build` |
-| DDD → kode → database (§4) | Eksplicit kobling i [docs/ddd-mapping.md](docs/ddd-mapping.md) |
+| DDD → kode → database (§4) | Dokumenteret i rapporten; afspejlet 1:1 i `app/load_control/domain` + MongoDB-collections |
