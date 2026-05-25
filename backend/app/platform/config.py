@@ -9,8 +9,11 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     log_level: str = "INFO"
-    database_url: str = "postgresql://voltedge:voltedge@localhost:5432/voltedge"
-    run_migrations_on_startup: bool = True
+    # MongoDB connection. Local default is the docker/dev mongo container; in the
+    # cloud this is a MongoDB Atlas SRV string (mongodb+srv://...), supplied via
+    # .env or a deployment secret — never committed.
+    mongo_url: str = "mongodb://localhost:27017"
+    mongo_db: str = "voltedge"
     seed_on_startup: bool = True
 
 

@@ -21,22 +21,22 @@ settlement; those would integrate via events across context boundaries.
 │ domain         LoadArea aggregate, entities, value objects,    │  ← business rules & invariants
 │                domain events   (no framework, no SQL)           │     (pure Python)
 ├──────────────────────────────────────────────────────────────┤
-│ infrastructure asyncpg repository, mappers, event store,       │  ← technology adapters
-│                read-side queries                                │
+│ infrastructure Mongo (Motor) repository, mappers, event store, │  ← technology adapters
+│                read-side aggregation queries                    │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 Dependencies point inward: `infrastructure` and `api` depend on `application`/`domain`; the
 `domain` depends on nothing. The repository is defined as an **abstract port**
-(`domain/repository.py`) and implemented in infrastructure (`PostgresLoadAreaRepository`), so the
-business rules never see a database row.
+(`domain/repository.py`) and implemented in infrastructure (`MongoLoadAreaRepository`), so the
+business rules never see a database document.
 
 ### CQRS-lite
 
 - **Writes** go through the `LoadArea` aggregate (commands → invariants → events).
-- **Reads** are served from warehouse **views** via `LoadAreaQueries` / `AnalyticsService`, never by
-  loading the aggregate. This keeps the read and write models decoupled and lets the BI layer reuse
-  the same projections.
+- **Reads** are served from **aggregation pipelines** via `LoadAreaQueries` / `AnalyticsService`,
+  never by loading the aggregate. This keeps the read and write models decoupled and lets the BI
+  layer reuse the same projections.
 
 ## The regulation cascade
 
@@ -63,20 +63,22 @@ sequenceDiagram
 ```
 
 The aggregate **records** events; the application service **publishes** them only after the
-transaction is persisted. The event publisher writes every event to the `domain_events` store and
-projects load snapshots into `load_samples`, which feed the analytics/BI views.
+transaction is persisted. The event publisher writes every event to the `domain_events` collection
+and projects load snapshots into `load_samples`, which feed the analytics/BI aggregations.
 
 ## Data flow for BI vs Ops (kept separate)
 
-- **Business Intelligence (§6):** `load_samples` + `domain_events` → warehouse views →
+- **Business Intelligence (§6):** `load_samples` + `domain_events` → aggregation pipelines →
   `AnalyticsService` → `/analytics/*` → **React dashboard**.
 - **Operational monitoring (§5):** FastAPI `/metrics` → **Prometheus** → **Grafana** dashboards +
   alert rules. No business data flows into Grafana.
 
 ## Scalability & security notes
 
-- **Scalability:** the service is stateless (all state in PostgreSQL), so it scales horizontally
-  behind a load balancer; `asyncpg` pooling and async I/O handle many concurrent sessions; reads are
-  offloaded to views and could move to read replicas or materialised views.
-- **Security:** all SQL uses bound parameters (injection-safe); input is validated at the API
-  boundary by Pydantic; configuration/secrets come from environment variables, never committed.
+- **Scalability:** the service is stateless (all state in MongoDB), so it scales horizontally
+  behind a load balancer; Motor's async I/O + connection pooling handle many concurrent sessions;
+  reads are offloaded to aggregation pipelines and could move to MongoDB Atlas read replicas /
+  analytics nodes.
+- **Security:** queries use field filters via the BSON driver (no string-built queries →
+  injection-safe); input is validated at the API boundary by Pydantic; configuration/secrets
+  (incl. the Atlas connection string) come from environment variables, never committed.

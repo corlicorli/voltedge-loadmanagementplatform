@@ -18,13 +18,13 @@ from app.load_control.application.commands import (
     StartChargingSession,
 )
 from app.load_control.application.load_control_service import LoadControlService
-from app.load_control.infrastructure.queries import PostgresLoadAreaQueries
+from app.load_control.infrastructure.queries import MongoLoadAreaQueries
 from app.platform.dependencies import get_queries, get_service
 
 router = APIRouter(prefix="/load-areas", tags=["load-control"])
 
 
-async def _require_status(queries: PostgresLoadAreaQueries, area_code: str) -> dict:
+async def _require_status(queries: MongoLoadAreaQueries, area_code: str) -> dict:
     row = await queries.status(area_code)
     if row is None:
         raise HTTPException(status_code=404, detail=f"Load area '{area_code}' not found")
@@ -41,7 +41,7 @@ async def start_session(
     area_code: str,
     body: StartSessionRequest,
     service: LoadControlService = Depends(get_service),
-    queries: PostgresLoadAreaQueries = Depends(get_queries),
+    queries: MongoLoadAreaQueries = Depends(get_queries),
 ) -> StartSessionResponse:
     session_id = await service.start_charging_session(
         StartChargingSession(
@@ -60,7 +60,7 @@ async def start_session(
     summary="Get current LoadStatus and currentLoad",
 )
 async def get_status(
-    area_code: str, queries: PostgresLoadAreaQueries = Depends(get_queries)
+    area_code: str, queries: MongoLoadAreaQueries = Depends(get_queries)
 ) -> AreaStatusResponse:
     return AreaStatusResponse.model_validate(await _require_status(queries, area_code))
 
@@ -71,7 +71,7 @@ async def get_status(
     summary="Get active charging sessions",
 )
 async def list_sessions(
-    area_code: str, queries: PostgresLoadAreaQueries = Depends(get_queries)
+    area_code: str, queries: MongoLoadAreaQueries = Depends(get_queries)
 ) -> list[SessionResponse]:
     await _require_status(queries, area_code)
     rows = await queries.active_sessions(area_code)
@@ -86,7 +86,7 @@ async def list_sessions(
 async def list_adjustments(
     area_code: str,
     limit: int = Query(100, ge=1, le=1000),
-    queries: PostgresLoadAreaQueries = Depends(get_queries),
+    queries: MongoLoadAreaQueries = Depends(get_queries),
 ) -> list[AdjustmentResponse]:
     await _require_status(queries, area_code)
     rows = await queries.adjustments(area_code, limit)
@@ -101,7 +101,7 @@ async def list_adjustments(
 async def evaluate(
     area_code: str,
     service: LoadControlService = Depends(get_service),
-    queries: PostgresLoadAreaQueries = Depends(get_queries),
+    queries: MongoLoadAreaQueries = Depends(get_queries),
 ) -> AreaStatusResponse:
     await service.evaluate_capacity(EvaluateLoadAreaCapacity(area_code=area_code))
     return AreaStatusResponse.model_validate(await _require_status(queries, area_code))
@@ -132,7 +132,7 @@ async def register_charger(
     summary="List chargers in a load area",
 )
 async def list_chargers(
-    area_code: str, queries: PostgresLoadAreaQueries = Depends(get_queries)
+    area_code: str, queries: MongoLoadAreaQueries = Depends(get_queries)
 ) -> list[ChargerResponse]:
     await _require_status(queries, area_code)
     rows = await queries.chargers(area_code)

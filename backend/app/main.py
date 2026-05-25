@@ -23,8 +23,9 @@ logger = logging.getLogger("voltedge.api")
 async def lifespan(app: FastAPI):
     configure_logging(settings.log_level)
     await db.connect()
-    if settings.run_migrations_on_startup:
-        await db.run_migrations()
+    if not await db.ping():
+        raise RuntimeError("MongoDB is not reachable; check MONGO_URL")
+    await db.init_indexes()
     if settings.seed_on_startup:
         await db.seed()
     logger.info("Load Control Service started (env=%s)", settings.app_env)
@@ -72,11 +73,8 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["ops"], summary="Liveness + database readiness")
     async def health():
-        try:
-            async with db.pool.acquire() as conn:
-                await conn.fetchval("SELECT 1")
-        except Exception as exc:
-            raise HTTPException(status_code=503, detail="database unavailable") from exc
+        if not await db.ping():
+            raise HTTPException(status_code=503, detail="database unavailable")
         return {"status": "ok", "database": "up", "service": "load-control"}
 
     @app.get("/", tags=["ops"], summary="Service info")

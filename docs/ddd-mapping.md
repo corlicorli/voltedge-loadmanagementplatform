@@ -10,31 +10,31 @@ All domain paths are under `backend/app/load_control/`.
 
 | Design | Code | Database |
 | --- | --- | --- |
-| `LoadArea` (aggregate root, transactional boundary, owns all invariants) | `domain/load_area.py` → `class LoadArea` | table `load_areas` |
+| `LoadArea` (aggregate root, transactional boundary, owns all invariants) | `domain/load_area.py` → `class LoadArea` | collection `load_areas` (`_id` = area code) |
 
 ## Entities
 
 | Design | Code | Database |
 | --- | --- | --- |
-| `Charger` | `domain/entities.py` → `Charger` | `chargers` |
-| `ChargingSession` | `domain/entities.py` → `ChargingSession` | `charging_sessions` |
-| `LoadRule` | `domain/entities.py` → `LoadRule` | `load_rules` |
-| `LoadAdjustment` | `domain/entities.py` → `LoadAdjustment` | `load_adjustments` |
+| `Charger` | `domain/entities.py` → `Charger` | collection `chargers` (`_id` = charger id) |
+| `ChargingSession` | `domain/entities.py` → `ChargingSession` | collection `charging_sessions` (`_id` = session uuid) |
+| `LoadRule` | `domain/entities.py` → `LoadRule` | collection `load_rules` (`_id` = rule uuid) |
+| `LoadAdjustment` | `domain/entities.py` → `LoadAdjustment` | collection `load_adjustments` (`_id` = adjustment uuid) |
 
 ## Value objects
 
 | Design | Code | Database |
 | --- | --- | --- |
-| `AreaCode` | `value_objects.py` → `AreaCode` | `load_areas.area_code` |
-| `PowerLevel` | `value_objects.py` → `PowerLevel` | `*_power_kw` columns |
-| `LoadStatus` (STABLE/WARNING/CRITICAL) | `value_objects.py` → `LoadStatus` | `*.status` (+ CHECK constraint) |
+| `AreaCode` | `value_objects.py` → `AreaCode` | `load_areas._id` |
+| `PowerLevel` | `value_objects.py` → `PowerLevel` | `*_power_kw` fields |
+| `LoadStatus` (STABLE/WARNING/CRITICAL) | `value_objects.py` → `LoadStatus` | `*.status` field |
 | `ThresholdPercentage` | `value_objects.py` → `ThresholdPercentage` | `load_areas.warning_fraction`, `critical_fraction` |
-| `MaxCapacity` / `CurrentLoad` / `AvailableCapacity` | `LoadThresholds` + derived properties on `LoadArea` | `max_capacity_kw`; current/available derived in `v_load_area_status` |
+| `MaxCapacity` / `CurrentLoad` / `AvailableCapacity` | `LoadThresholds` + derived properties on `LoadArea` | `max_capacity_kw`; current/available derived in the status aggregation (`MongoLoadAreaQueries.status`) |
 
 ## Domain events (the nine from the event storming)
 
-All defined in `domain/events.py`, recorded by aggregate methods, persisted to `domain_events`
-(`event_type`, `payload` JSONB) by `infrastructure/event_publisher.py`. `LoadAreaUpdated` and
+All defined in `domain/events.py`, recorded by aggregate methods, persisted to the `domain_events`
+collection (`event_type`, `payload`) by `infrastructure/event_publisher.py`. `LoadAreaUpdated` and
 `CurrentLoadUpdated` are additionally projected into the `load_samples` time-series.
 
 | Event | Recorded in `LoadArea.` |
@@ -56,7 +56,7 @@ All defined in `domain/events.py`, recorded by aggregate methods, persisted to `
 | `StartChargingSession` (external) | `application/commands.py` → API `POST /sessions` → `LoadControlService.start_charging_session` |
 | `EvaluateLoadAreaCapacity` (external) | `application/commands.py` → API `POST /evaluate` → `LoadControlService.evaluate_capacity` |
 | `UpdateCurrentLoad`, `ActivateLoadRule`, `ReduceChargingPower`, `RecalculateCurrentLoad`, `EvaluateRegulationResult`, `MarkLoadStable` (internal) | realised as `LoadArea` methods, orchestrated by the service |
-| `CreateInterventionRequest` | `infrastructure/intervention_service.py` → `intervention_requests` |
+| `CreateInterventionRequest` | `infrastructure/intervention_service.py` → `intervention_requests` collection |
 
 ## Policies (named, from §3.3)
 
@@ -69,15 +69,18 @@ All in `application/policies.py`, invoked in `application/load_control_service.p
 | `StabilizationPolicy` | `RegulationResultEvaluated` | if below max → mark area stable |
 | `ManualInterventionPolicy` | `RegulationResultEvaluated` | if still above max → create manual intervention request |
 
-## Read models (§3.4) → warehouse views
+## Read models (§3.4) → read-side aggregations
 
-| Read model | View |
+The SQL warehouse views are realised as MongoDB aggregation pipelines / queries on the read side
+(CQRS), so the write model (collections) and read model (projections) stay decoupled.
+
+| Read model | Realised by |
 | --- | --- |
-| `LoadAreaStatusView` / `CurrentLoadView` | `v_load_area_status` |
-| `ActiveChargingSessionsView` | `v_active_sessions` |
-| `ChargerPowerView` | `v_charger_power` |
-| `LoadAdjustmentView` | `v_load_adjustments` |
-| (analytics/BI) | `v_load_utilisation_hourly`, `v_peak_loads_daily`, `v_regulation_events`, `v_event_daily_counts`, `v_area_kpis` |
+| `LoadAreaStatusView` / `CurrentLoadView` | `infrastructure/queries.py` → `status` (sum of active sessions) |
+| `ActiveChargingSessionsView` | `infrastructure/queries.py` → `active_sessions` |
+| `ChargerPowerView` | `infrastructure/queries.py` → `chargers` |
+| `LoadAdjustmentView` | `infrastructure/queries.py` → `adjustments` |
+| (analytics/BI) | `analytics/.../analytics_service.py` → `hourly_utilisation`, `daily_peaks`, `regulation_events`, `event_counts`, `kpis` (`$group` + `$dateTrunc` pipelines) |
 
 ## Business rules (§3.1)
 

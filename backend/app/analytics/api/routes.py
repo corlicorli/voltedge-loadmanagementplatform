@@ -19,7 +19,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 def get_analytics() -> AnalyticsService:
-    return AnalyticsService(db.pool)
+    return AnalyticsService(db)
 
 
 @router.get("/{area_code}/kpis", response_model=KpiResponse, summary="Headline KPIs")

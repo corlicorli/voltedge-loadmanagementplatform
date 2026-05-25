@@ -1,7 +1,7 @@
 """Repository port for the LoadArea aggregate (Repository Pattern).
 
 The domain depends on this abstraction, not on any storage technology. The
-concrete asyncpg/PostgreSQL implementation lives in the infrastructure layer.
+concrete MongoDB implementation lives in the infrastructure layer.
 """
 from __future__ import annotations
 

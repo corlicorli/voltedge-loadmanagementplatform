@@ -20,5 +20,5 @@ pythonpath = ["."]
 addopts = "-q"
 markers = [
     "unit: pure unit tests with no external dependencies",
-    "integration: requires a running PostgreSQL at DATABASE_URL",
+    "integration: requires a running MongoDB at MONGO_URL",
 ]

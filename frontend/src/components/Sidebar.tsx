@@ -45,7 +45,7 @@ export function Sidebar() {
 
       <div className="m-3 rounded-xl border bg-secondary/60 p-4 text-center">
         <div className="text-xs font-semibold">Load Control Context</div>
-        <div className="mt-1 text-[11px] text-muted-foreground">DDD · FastAPI · PostgreSQL</div>
+        <div className="mt-1 text-[11px] text-muted-foreground">DDD · FastAPI · MongoDB</div>
       </div>
     </aside>
   );

@@ -1,11 +1,12 @@
-"""Mappers between database rows and the LoadArea aggregate.
+"""Mappers between MongoDB documents and the LoadArea aggregate.
 
 This is the explicit domain<->persistence boundary required by the exam: the
-domain model never sees a row, and the schema never sees a domain object.
+domain model never sees a document, and the collections never see a domain
+object. Each document stores its natural key in `_id`.
 """
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from app.load_control.domain.entities import (
@@ -25,14 +26,14 @@ from app.load_control.domain.value_objects import (
     ThresholdPercentage,
 )
 
-Row = Any  # asyncpg.Record behaves like a mapping
+Doc = Mapping[str, Any]
 
 
 def to_load_area(
-    area: Row,
-    charger_rows: Sequence[Row],
-    session_rows: Sequence[Row],
-    rule_rows: Sequence[Row],
+    area: Doc,
+    charger_docs: Sequence[Doc],
+    session_docs: Sequence[Doc],
+    rule_docs: Sequence[Doc],
 ) -> LoadArea:
     thresholds = LoadThresholds(
         max_capacity_kw=area["max_capacity_kw"],
@@ -41,39 +42,39 @@ def to_load_area(
     )
     chargers = [
         Charger(
-            charger_id=r["charger_id"],
-            area_code=r["area_code"],
-            max_power_kw=r["max_power_kw"],
-            status=ChargerStatus(r["status"]),
+            charger_id=d["_id"],
+            area_code=d["area_code"],
+            max_power_kw=d["max_power_kw"],
+            status=ChargerStatus(d["status"]),
         )
-        for r in charger_rows
+        for d in charger_docs
     ]
     sessions = [
         ChargingSession(
-            session_id=str(r["session_id"]),
-            area_code=r["area_code"],
-            charger_id=r["charger_id"],
-            requested_power=PowerLevel(r["requested_power_kw"]),
-            current_power=PowerLevel(r["current_power_kw"]),
-            status=SessionStatus(r["status"]),
-            started_at=r["started_at"],
-            stopped_at=r["stopped_at"],
+            session_id=d["_id"],
+            area_code=d["area_code"],
+            charger_id=d["charger_id"],
+            requested_power=PowerLevel(d["requested_power_kw"]),
+            current_power=PowerLevel(d["current_power_kw"]),
+            status=SessionStatus(d["status"]),
+            started_at=d["started_at"],
+            stopped_at=d.get("stopped_at"),
         )
-        for r in session_rows
+        for d in session_docs
     ]
     rules = [
         LoadRule(
-            rule_id=str(r["rule_id"]),
-            area_code=r["area_code"],
-            rule_type=LoadRuleType(r["rule_type"]),
-            threshold_fraction=r["threshold_fraction"],
-            reduction_fraction=r["reduction_fraction"],
-            active=r["active"],
+            rule_id=d["_id"],
+            area_code=d["area_code"],
+            rule_type=LoadRuleType(d["rule_type"]),
+            threshold_fraction=d["threshold_fraction"],
+            reduction_fraction=d["reduction_fraction"],
+            active=d["active"],
         )
-        for r in rule_rows
+        for d in rule_docs
     ]
     return LoadArea(
-        area_code=AreaCode(area["area_code"]),
+        area_code=AreaCode(area["_id"]),
         area_name=area["area_name"],
         thresholds=thresholds,
         chargers=chargers,

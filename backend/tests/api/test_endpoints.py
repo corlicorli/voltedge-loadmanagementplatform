@@ -1,6 +1,6 @@
-"""API/integration tests against a running PostgreSQL (skipped if unreachable).
+"""API/integration tests against a running MongoDB (skipped if unreachable).
 
-The TestClient triggers the app lifespan, which runs migrations and seeds the
+The TestClient triggers the app lifespan, which ensures indexes and seeds the
 YN load area, so these exercise the real DDD stack through HTTP.
 """
 import pytest

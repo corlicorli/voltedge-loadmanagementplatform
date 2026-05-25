@@ -1,105 +1,93 @@
-"""PostgreSQL implementation of the LoadAreaRepository port (asyncpg, raw SQL).
+"""MongoDB implementation of the LoadAreaRepository port (Motor async driver).
 
-All SQL uses bound parameters ($1, $2, ...) — never string interpolation — so
-the repository is safe against SQL injection.
+Documents are keyed by their natural id (`_id`): area_code, charger_id,
+session_id (uuid str), rule_id (uuid str), adjustment_id (uuid str). All access
+goes through the bound collection accessors on the Database singleton, and all
+filters use field equality — there is no string-built query to inject into.
 """
 from __future__ import annotations
-
-import uuid
-
-import asyncpg
 
 from app.load_control.domain.load_area import LoadArea
 from app.load_control.domain.repository import LoadAreaNotFound, LoadAreaRepository
 from app.load_control.domain.value_objects import AreaCode
 from app.load_control.infrastructure.mappers import to_load_area
+from app.platform.database import Database, utcnow
 
 
-class PostgresLoadAreaRepository(LoadAreaRepository):
-    def __init__(self, pool: asyncpg.Pool) -> None:
-        self._pool = pool
+class MongoLoadAreaRepository(LoadAreaRepository):
+    def __init__(self, db: Database) -> None:
+        self._db = db
 
     async def get(self, area_code: AreaCode) -> LoadArea:
-        async with self._pool.acquire() as conn:
-            area = await conn.fetchrow(
-                "SELECT * FROM load_areas WHERE area_code = $1", area_code.value
-            )
-            if area is None:
-                raise LoadAreaNotFound(area_code.value)
-            chargers = await conn.fetch(
-                "SELECT * FROM chargers WHERE area_code = $1 ORDER BY charger_id", area_code.value
-            )
-            sessions = await conn.fetch(
-                "SELECT * FROM charging_sessions WHERE area_code = $1 AND status = 'ACTIVE'",
-                area_code.value,
-            )
-            rules = await conn.fetch(
-                "SELECT * FROM load_rules WHERE area_code = $1", area_code.value
-            )
+        area = await self._db.load_areas.find_one({"_id": area_code.value})
+        if area is None:
+            raise LoadAreaNotFound(area_code.value)
+        chargers = (
+            await self._db.chargers.find({"area_code": area_code.value})
+            .sort("_id", 1)
+            .to_list(length=None)
+        )
+        sessions = await self._db.charging_sessions.find(
+            {"area_code": area_code.value, "status": "ACTIVE"}
+        ).to_list(length=None)
+        rules = await self._db.load_rules.find({"area_code": area_code.value}).to_list(
+            length=None
+        )
         return to_load_area(area, chargers, sessions, rules)
 
     async def save(self, area: LoadArea) -> None:
-        async with self._pool.acquire() as conn, conn.transaction():
-            await conn.execute(
-                "UPDATE load_areas SET status = $2, updated_at = now() WHERE area_code = $1",
-                area.area_code.value,
-                area.status.value,
+        now = utcnow()
+        await self._db.load_areas.update_one(
+            {"_id": area.area_code.value},
+            {"$set": {"status": area.status.value, "updated_at": now}},
+        )
+        for charger in area.chargers:
+            await self._db.chargers.update_one(
+                {"_id": charger.charger_id},
+                {
+                    "$set": {
+                        "area_code": charger.area_code,
+                        "max_power_kw": charger.max_power_kw,
+                        "status": charger.status.value,
+                    },
+                    "$setOnInsert": {"created_at": now},
+                },
+                upsert=True,
             )
-            for charger in area.chargers:
-                await conn.execute(
-                    """
-                    INSERT INTO chargers (charger_id, area_code, max_power_kw, status)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (charger_id) DO UPDATE
-                        SET max_power_kw = EXCLUDED.max_power_kw, status = EXCLUDED.status
-                    """,
-                    charger.charger_id,
-                    charger.area_code,
-                    charger.max_power_kw,
-                    charger.status.value,
-                )
-            for session in area.sessions:
-                await conn.execute(
-                    """
-                    INSERT INTO charging_sessions
-                        (session_id, area_code, charger_id, requested_power_kw,
-                         current_power_kw, status, started_at, stopped_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                    ON CONFLICT (session_id) DO UPDATE
-                        SET current_power_kw = EXCLUDED.current_power_kw,
-                            status = EXCLUDED.status,
-                            stopped_at = EXCLUDED.stopped_at
-                    """,
-                    uuid.UUID(session.session_id),
-                    session.area_code,
-                    session.charger_id,
-                    session.requested_power.kw,
-                    session.current_power.kw,
-                    session.status.value,
-                    session.started_at,
-                    session.stopped_at,
-                )
-            for adj in area.adjustments:
-                await conn.execute(
-                    """
-                    INSERT INTO load_adjustments
-                        (adjustment_id, area_code, session_id, previous_power_kw,
-                         new_power_kw, reason, created_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
-                    ON CONFLICT (adjustment_id) DO NOTHING
-                    """,
-                    uuid.UUID(adj.adjustment_id),
-                    adj.area_code,
-                    uuid.UUID(adj.session_id),
-                    adj.previous_power_kw,
-                    adj.new_power_kw,
-                    adj.reason,
-                    adj.created_at,
-                )
+        for session in area.sessions:
+            await self._db.charging_sessions.update_one(
+                {"_id": session.session_id},
+                {
+                    "$set": {
+                        "current_power_kw": session.current_power.kw,
+                        "status": session.status.value,
+                        "stopped_at": session.stopped_at,
+                    },
+                    "$setOnInsert": {
+                        "area_code": session.area_code,
+                        "charger_id": session.charger_id,
+                        "requested_power_kw": session.requested_power.kw,
+                        "started_at": session.started_at,
+                    },
+                },
+                upsert=True,
+            )
+        for adj in area.adjustments:
+            await self._db.load_adjustments.update_one(
+                {"_id": adj.adjustment_id},
+                {
+                    "$setOnInsert": {
+                        "area_code": adj.area_code,
+                        "session_id": adj.session_id,
+                        "previous_power_kw": adj.previous_power_kw,
+                        "new_power_kw": adj.new_power_kw,
+                        "reason": adj.reason,
+                        "created_at": adj.created_at,
+                    }
+                },
+                upsert=True,
+            )
 
     async def exists(self, area_code: AreaCode) -> bool:
-        async with self._pool.acquire() as conn:
-            found = await conn.fetchval(
-                "SELECT 1 FROM load_areas WHERE area_code = $1", area_code.value
-            )
-        return found is not None
+        count = await self._db.load_areas.count_documents({"_id": area_code.value}, limit=1)
+        return count > 0

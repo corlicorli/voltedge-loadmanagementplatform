@@ -1,42 +1,51 @@
 # VoltEdge Load Management — full stack. Run everything with: docker compose up
 #
-#   postgres    operational DB + analytics warehouse views        :5432
-#   backend     Load Control Service (FastAPI, DDD)               :8000  (/docs, /metrics, /health)
-#   frontend    React BI dashboard (§6 Business Intelligence)     :5173
-#   prometheus  scrapes backend /metrics                          :9090
-#   grafana     API/ops monitoring dashboards + alerts (§5)       :3001
+#   mongo         operational DB + analytics store (MongoDB)        :27017
+#   mongo-express browse the database in the demo                   :8081
+#   backend       Load Control Service (FastAPI, DDD)               :8000  (/docs, /metrics, /health)
+#   frontend      React BI dashboard (§6 Business Intelligence)     :5173
+#   prometheus    scrapes backend /metrics                          :9090
+#   grafana       API/ops monitoring dashboards + alerts (§5)       :3001
 #
 # BI (frontend) and ops monitoring (grafana) are intentionally separate concerns.
+# In the cloud, point the backend at MongoDB Atlas by setting MONGO_URL.
 
 services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-voltedge}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voltedge}
-      POSTGRES_DB: ${POSTGRES_DB:-voltedge}
+  mongo:
+    image: mongo:7
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${MONGO_PORT:-27017}:27017"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongo-data:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-voltedge} -d ${POSTGRES_DB:-voltedge}"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping:1}).ok"]
       interval: 5s
       timeout: 3s
       retries: 12
 
+  mongo-express:
+    image: mongo-express:1.0.2
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017
+      ME_CONFIG_BASICAUTH: "false"
+    ports:
+      - "${MONGO_EXPRESS_PORT:-8081}:8081"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-voltedge}:${POSTGRES_PASSWORD:-voltedge}@postgres:5432/${POSTGRES_DB:-voltedge}
+      MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
+      MONGO_DB: ${MONGO_DB:-voltedge}
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      RUN_MIGRATIONS_ON_STARTUP: "true"
       SEED_ON_STARTUP: "true"
     ports:
       - "8000:8000"
     depends_on:
-      postgres:
+      mongo:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""]
@@ -81,5 +90,5 @@ services:
       - prometheus
 
 volumes:
-  pgdata:
+  mongo-data:
   grafana-data:
