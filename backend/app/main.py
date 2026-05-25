@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("MongoDB is not reachable; check MONGO_URL")
     await db.init_indexes()
     # No seeding: the system starts empty and is built up through the API
-    # (onboarding + the demo populator), so the demo reflects real usage.
+    # (the Postman onboarding flow), so the demo reflects real usage.
     logger.info("Load Control Service started (env=%s)", settings.app_env)
     yield
     await db.disconnect()

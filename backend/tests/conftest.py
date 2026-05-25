@@ -34,8 +34,8 @@ def _db_reachable() -> bool:
 def _build_baseline(client) -> None:
     """Build the YN demo baseline via the API (the system ships empty — no seed).
 
-    Mirrors scripts/populate_demo.py: register YN + its 24 chargers + 22 baseline
-    sessions (21x11 + 1x2 = 233 kW), leaving YN-23/YN-24 free for the tests.
+    Mirrors the Postman "Onboarding" folder: register YN + its 24 chargers + 22
+    baseline sessions (21x11 + 1x2 = 233 kW), leaving YN-23/YN-24 free for the tests.
     """
     client.post(
         "/load-areas",

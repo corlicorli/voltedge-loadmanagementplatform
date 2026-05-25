@@ -74,7 +74,7 @@
     },
     {
       "name": "2. Onboarding — kunden registrerer sit område",
-      "description": "Viser hvordan en kunde onboarder fra en HELT TOM database: registrér load area YN og dens ladestandere via API'et. Ren registrering (ingen last endnu). For alle 24 standere + baseline-last på ~233 kW, kør populatoren: docker compose exec backend python scripts/populate_demo.py",
+      "description": "Kunden onboarder fra en HELT TOM database, udelukkende via API'et: registrér load area YN, registrér dens 24 ladestandere, og start baseline-opladningerne (233 kW). Alt sker med rigtige Postman-kald — intet eksternt script. Kør mod en tom DB.",
       "item": [
         {
           "name": "1. Registrér load area YN",
@@ -85,8 +85,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('oprettet (201) eller findes (409)', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));",
-                  "if (pm.response.code === 201) { const a = pm.response.json(); console.log(`Område ${a.areaCode} oprettet: ${a.maxCapacityKw} kW, status ${a.status}`); }",
-                  "else { console.log('Område YN findes allerede.'); }"
+                  "if (pm.response.code === 201) console.log('Område YN oprettet (240 kW).'); else console.log('Område YN findes allerede.');"
                 ]
               }
             }
@@ -127,73 +126,39 @@
           }
         },
         {
-          "name": "3. Registrér ladestander YN-01",
+          "name": "3. Registrér de 24 ladestandere",
           "event": [
             {
-              "listen": "test",
+              "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('oprettet (201) eller findes (422)', () => pm.expect(pm.response.code).to.be.oneOf([201,422]));"
+                  "// Registrér de 24 ladestandere (YN-01..YN-24) via rigtige API-kald — sekventielt.",
+                  "const base = pm.variables.get('base_url');",
+                  "const area = pm.variables.get('area_code');",
+                  "const ids = [];",
+                  "for (let g = 1; g <= 24; g++) ids.push('YN-' + String(g).padStart(2, '0'));",
+                  "function register(i) {",
+                  "  if (i >= ids.length) return;",
+                  "  pm.sendRequest({",
+                  "    url: base + '/load-areas/' + area + '/chargers',",
+                  "    method: 'POST',",
+                  "    header: { 'Content-Type': 'application/json' },",
+                  "    body: { mode: 'raw', raw: JSON.stringify({ chargerId: ids[i], maxPowerKw: 11 }) }",
+                  "  }, function (err, res) { register(i + 1); });",
+                  "}",
+                  "register(0);"
                 ]
               }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/load-areas/{{area_code}}/chargers",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"chargerId\": \"YN-01\",\n  \"maxPowerKw\": 11\n}"
-            }
-          }
-        },
-        {
-          "name": "4. Registrér ladestander YN-02",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('oprettet (201) eller findes (422)', () => pm.expect(pm.response.code).to.be.oneOf([201,422]));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/load-areas/{{area_code}}/chargers",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"chargerId\": \"YN-02\",\n  \"maxPowerKw\": 11\n}"
-            }
-          }
-        },
-        {
-          "name": "5. Se områdets ladestandere",
-          "event": [
+            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status is 200', () => pm.response.to.have.status(200));",
-                  "const ids = pm.response.json().map(c => c.chargerId);",
-                  "pm.test('YN-01 er registreret', () => pm.expect(ids).to.include('YN-01'));",
-                  "console.log('Registrerede standere: ' + ids.length);"
+                  "pm.test('alle 24 ladestandere er registreret', () => pm.expect(pm.response.json().length).to.eql(24));",
+                  "console.log('Registrerede ladestandere: ' + pm.response.json().length);"
                 ]
               }
             }
@@ -201,7 +166,56 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{base_url}}/load-areas/{{area_code}}/chargers"
+            "url": "{{base_url}}/load-areas/{{area_code}}/chargers",
+            "description": "Pre-request-scriptet registrerer YN-01..YN-24 sekventielt via API'et; selve requesten henter listen bagefter."
+          }
+        },
+        {
+          "name": "4. Start baseline-opladninger (→ 233 kW)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Start baseline-opladninger: 21 x 11 kW + 1 x 2 kW = 233 kW (WARNING). YN-23/24 frie.",
+                  "const base = pm.variables.get('base_url');",
+                  "const area = pm.variables.get('area_code');",
+                  "const sessions = [];",
+                  "for (let g = 1; g <= 21; g++) sessions.push({ chargerId: 'YN-' + String(g).padStart(2, '0'), powerLevelKw: 11 });",
+                  "sessions.push({ chargerId: 'YN-22', powerLevelKw: 2 });",
+                  "function start(i) {",
+                  "  if (i >= sessions.length) return;",
+                  "  pm.sendRequest({",
+                  "    url: base + '/load-areas/' + area + '/sessions',",
+                  "    method: 'POST',",
+                  "    header: { 'Content-Type': 'application/json' },",
+                  "    body: { mode: 'raw', raw: JSON.stringify(sessions[i]) }",
+                  "  }, function (err, res) { start(i + 1); });",
+                  "}",
+                  "start(0);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const a = pm.response.json();",
+                  "pm.test('baseline ~233 kW', () => pm.expect(a.currentLoadKw).to.be.within(230, 236));",
+                  "pm.test('status WARNING', () => pm.expect(a.status).to.eql('WARNING'));",
+                  "console.log(`Baseline: ${a.currentLoadKw} kW (${a.status}), ${a.activeSessionCount} sessioner. Ledige: YN-23, YN-24.`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/load-areas/{{area_code}}/status",
+            "description": "Pre-request-scriptet starter 22 baseline-sessioner; selve requesten henter status bagefter."
           }
         }
       ]

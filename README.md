@@ -64,11 +64,7 @@ cd voltedge-loadmanagementplatform
 docker compose up --build -d
 ```
 
-Systemet starter **tomt** — ingen pre-seedet/simuleret data. Det afspejler et reelt forløb: en kunde bygger sin overvågning op via API'et. Du onboarder enten **trin for trin** (Postman-mappen *Onboarding*) eller bygger hele YN-baseline (24 standere, ~233 kW) med ét kald til populatoren:
-
-```bash
-docker compose exec backend python scripts/populate_demo.py
-```
+Systemet starter **tomt** — ingen pre-seedet/simuleret data. Du bygger YN op via API'et: kør Postman-mappen *Onboarding* (registrerer området + dens 24 ladestandere + baseline-lasten — alt via rigtige API-kald), eller hele demoen på CLI med `./postman/run-demo.sh`.
 
 | Service | URL | Til hvad |
 |---|---|---|
@@ -87,27 +83,24 @@ docker compose exec backend python scripts/populate_demo.py
 
 Systemet starter **tomt**; hele forløbet (rapportens scenarie) bygges op via API'et — intet simuleres.
 
-**1. Onboarding** — en kunde registrerer sit load area (Postman-mappen *Onboarding*, eller direkte):
+**1. Onboarding** (Postman-mappen *Onboarding*) — kunden registrerer sit load area YN, dens **24 ladestandere** og baseline-opladningerne (→ **233 kW**, WARNING) — alt via rigtige API-kald, intet script:
 
 ```bash
 curl -X POST http://localhost:8000/load-areas \
   -H 'content-type: application/json' \
   -d '{"areaCode":"YN","areaName":"Ydre Nørrebro","maxCapacityKw":240}'
+# + POST /load-areas/YN/chargers (YN-01..YN-24) og /sessions (baseline) — Onboarding-mappen gør det automatisk
 ```
 
-**2. Byg baseline** — 24 standere + ~233 kW (WARNING) via populatoren (rene API-kald):
-
-```bash
-docker compose exec backend python scripts/populate_demo.py
-```
-
-**3. Regulering** — en ledig lader (YN-23) tages i brug → **244 kW (CRITICAL)** → **10% regulering** → **219,6 kW**:
+**2. Regulering** (Postman-mappen *Regulering*) — en ledig lader (YN-23) tages i brug → **244 kW (CRITICAL)** → **10% regulering** → **219,6 kW**:
 
 ```bash
 curl -X POST http://localhost:8000/load-areas/YN/sessions \
   -H 'content-type: application/json' -d '{"chargerId":"YN-23","powerLevelKw":11}'
 curl http://localhost:8000/analytics/YN/regulation-events    # nu fyldt
 ```
+
+Eller kør hele forløbet automatisk: `./postman/run-demo.sh` (onboarding → regulering → analytics).
 
 **Postman / newman:** collectionen har mapperne **Setup · Onboarding · Regulering · Analytics** ([`postman/VoltEdge-LoadManagement.postman_collection.json`](postman/VoltEdge-LoadManagement.postman_collection.json)). YN har **24 faste standere** — onboarding/populator registrerer netop dem, ingen ud over de 24. `run-demo.sh` bygger baseline (populator) og kører hele collectionen:
 
@@ -162,7 +155,7 @@ Forventet: `38 passed`. Unit-tests dækker domæne + hele reguleringskaskaden (i
 
 ## Datamodel — 8 MongoDB collections
 
-`_id` = den naturlige nøgle (area code / charger id / uuid). Skrivemodellen; læsemodellen (CQRS) er aggregeringspipelines. **Alle collections starter tomme** og fyldes via API'et (onboarding + populator) — intet seedes.
+`_id` = den naturlige nøgle (area code / charger id / uuid). Skrivemodellen; læsemodellen (CQRS) er aggregeringspipelines. **Alle collections starter tomme** og fyldes via API'et (Postman *Onboarding*-mappen) — intet seedes.
 
 | Collection | Indhold | Kategori |
 |---|---|---|
@@ -196,7 +189,6 @@ backend/
   app/load_control/{domain,application,infrastructure,api}   — DDD-lag for Load Control Context
   app/analytics/{application,api}                            — dataanalyse-domæneservice (§6)
   app/platform/{config,database,logging_config,dependencies} — Motor-klient, config, JSON-logning
-  scripts/populate_demo.py — bygger YN-baseline via API'et (tomt -> 24 standere + 233 kW)
   tests/                — pytest (38: unit + integration)
   Dockerfile
 frontend/               — React + TS BI-dashboard (Vite, shadcn/ui, Recharts, nginx)

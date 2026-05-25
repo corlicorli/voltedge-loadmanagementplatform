@@ -3,7 +3,7 @@
 A single `db` singleton owns the AsyncIOMotorClient and exposes named collection
 accessors plus lifecycle helpers (index creation and a health ping). The system
 starts EMPTY — there is no seeding; the demo data is built up through the API
-(onboarding + the demo populator), so the running system reflects real usage.
+(the Postman onboarding flow), so the running system reflects real usage.
 
 The same code talks to a local `mongo:7` container in development and to MongoDB
 Atlas (mongodb+srv://...) in the cloud — only MONGO_URL changes.
