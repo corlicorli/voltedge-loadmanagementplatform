@@ -6,12 +6,34 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "base_url", "value": "http://localhost:8000" },
-    { "key": "area_code", "value": "YN" },
-    { "key": "charger_id", "value": "YN-23" },
-    { "key": "newChargerId", "value": "" },
-    { "key": "sessionId", "value": "" },
-    { "key": "baselineLoad", "value": "" }
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "area_code",
+      "value": "YN"
+    },
+    {
+      "key": "charger_id",
+      "value": "YN-23"
+    },
+    {
+      "key": "newChargerId",
+      "value": ""
+    },
+    {
+      "key": "sessionId",
+      "value": ""
+    },
+    {
+      "key": "baselineLoad",
+      "value": ""
+    },
+    {
+      "key": "regChargerId",
+      "value": ""
+    }
   ],
   "item": [
     {
@@ -86,7 +108,12 @@
           "name": "4. Start charging session (triggers regulation)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"chargerId\": \"{{charger_id}}\",\n  \"powerLevelKw\": 11\n}"
@@ -184,7 +211,11 @@
       "item": [
         {
           "name": "KPIs",
-          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/kpis" },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/analytics/{{area_code}}/kpis"
+          },
           "event": [
             {
               "listen": "test",
@@ -202,7 +233,11 @@
         },
         {
           "name": "Load timeseries (24h)",
-          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/load-timeseries?hours=24" },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/analytics/{{area_code}}/load-timeseries?hours=24"
+          },
           "event": [
             {
               "listen": "test",
@@ -218,7 +253,11 @@
         },
         {
           "name": "Daily peaks (7d)",
-          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/daily-peaks?days=7" },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/analytics/{{area_code}}/daily-peaks?days=7"
+          },
           "event": [
             {
               "listen": "test",
@@ -234,7 +273,11 @@
         },
         {
           "name": "Status distribution (7d)",
-          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/status-distribution?days=7" },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/analytics/{{area_code}}/status-distribution?days=7"
+          },
           "event": [
             {
               "listen": "test",
@@ -250,7 +293,11 @@
         },
         {
           "name": "Regulation events (diagnostic)",
-          "request": { "method": "GET", "header": [], "url": "{{base_url}}/analytics/{{area_code}}/regulation-events?limit=20" },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/analytics/{{area_code}}/regulation-events?limit=20"
+          },
           "event": [
             {
               "listen": "test",
@@ -298,7 +345,12 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"chargerId\": \"{{newChargerId}}\",\n  \"maxPowerKw\": 11\n}"
@@ -325,7 +377,12 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"chargerId\": \"{{newChargerId}}\",\n  \"powerLevelKw\": 11\n}"
@@ -366,6 +423,150 @@
                   "pm.test('status is 200', () => pm.response.to.have.status(200));",
                   "const s = pm.response.json();",
                   "console.log('BI dashboard now shows ' + s.currentLoadKw + ' kW, ' + s.activeSessionCount + ' sessions (' + s.status + '). These calls also show up in Grafana API monitoring.');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/load-areas/{{area_code}}/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Regulering — lynlader rammer max",
+      "item": [
+        {
+          "name": "1. Registrer en 50 kW lynlader",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Unik id pr. kørsel, så mappen kan køres igen og igen.",
+                  "pm.collectionVariables.set('regChargerId', 'YN-FC-' + Math.floor(100 + Math.random() * 900));",
+                  "console.log('Registrerer lynlader ' + pm.collectionVariables.get('regChargerId'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const c = pm.response.json();",
+                  "pm.test('charger registered', () => pm.expect(c.chargerId).to.eql(pm.collectionVariables.get('regChargerId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/load-areas/{{area_code}}/chargers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chargerId\": \"{{regChargerId}}\",\n  \"maxPowerKw\": 50\n}"
+            }
+          }
+        },
+        {
+          "name": "2. Lynladeren starter (rammer max -> regulering)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "const a = r.areaStatus;",
+                  "pm.collectionVariables.set('sessionId', r.sessionId);",
+                  "pm.test('regulering holder omraadet paa/under max', () => pm.expect(a.currentLoadKw).to.be.at.most(a.maxCapacityKw + 0.001));",
+                  "console.log(`Lynlader startet; omraadet er nu ${a.currentLoadKw} kW (${a.status}) efter regulering`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/load-areas/{{area_code}}/sessions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chargerId\": \"{{regChargerId}}\",\n  \"powerLevelKw\": 50\n}"
+            }
+          }
+        },
+        {
+          "name": "3. Regulation events (vises nu i BI)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const ev = pm.response.json();",
+                  "pm.test('regulering blev registreret', () => pm.expect(ev.length).to.be.above(0));",
+                  "console.log('Regulation events i BI: ' + ev.map(e => e.eventType).join(', '));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/analytics/{{area_code}}/regulation-events?limit=20"
+          }
+        },
+        {
+          "name": "4. Load adjustments (effekt-reduktioner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const adj = pm.response.json();",
+                  "pm.test('effekt blev reduceret', () => pm.expect(adj.length).to.be.above(0));",
+                  "console.log('Antal load adjustments: ' + adj.length);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/load-areas/{{area_code}}/adjustments?limit=50"
+          }
+        },
+        {
+          "name": "5. Area status (stabiliseret)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const a = pm.response.json();",
+                  "console.log(`Slutstatus: ${a.currentLoadKw} kW / ${a.maxCapacityKw} kW (${a.status})`);"
                 ]
               }
             }

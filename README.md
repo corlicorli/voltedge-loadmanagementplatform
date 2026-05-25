@@ -96,7 +96,7 @@ curl -X POST http://localhost:8000/load-areas/YN/sessions \
 curl http://localhost:8000/analytics/YN/regulation-events
 ```
 
-**Postman / newman:** fuldt flow er klar til import — [`postman/VoltEdge-LoadManagement.postman_collection.json`](postman/VoltEdge-LoadManagement.postman_collection.json) (Load Control → Analytics → Charger Management). CLI:
+**Postman / newman:** fuldt flow er klar til import — [`postman/VoltEdge-LoadManagement.postman_collection.json`](postman/VoltEdge-LoadManagement.postman_collection.json) med mapperne **Load Control · Analytics · Charger Management · Regulering**. Mappen *«Regulering — lynlader rammer max»* registrerer en 50 kW-lynlader der tipper området over max og udløser en regulering **on-demand** — kør den for at få **regulation events** frem i BI-panelet (de findes kun efter en faktisk regulering, ikke i seed-data). CLI:
 
 ```bash
 ./postman/run-demo.sh        # 16 requests, 34 assertions
