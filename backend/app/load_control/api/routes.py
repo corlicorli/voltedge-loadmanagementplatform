@@ -17,6 +17,7 @@ from app.load_control.api.schemas import (
 from app.load_control.application.commands import (
     CreateLoadArea,
     EvaluateLoadAreaCapacity,
+    RecordChargerHeartbeat,
     RegisterCharger,
     StartChargingSession,
 )
@@ -152,7 +153,10 @@ async def register_charger(
 ) -> ChargerResponse:
     charger = await service.register_charger(
         RegisterCharger(
-            area_code=area_code, charger_id=body.charger_id, max_power_kw=body.max_power_kw
+            area_code=area_code,
+            charger_id=body.charger_id,
+            max_power_kw=body.max_power_kw,
+            name=body.name,
         )
     )
     return ChargerResponse.model_validate(charger)
@@ -169,3 +173,41 @@ async def list_chargers(
     await _require_status(queries, area_code)
     rows = await queries.chargers(area_code)
     return [ChargerResponse.model_validate(r) for r in rows]
+
+
+@router.get(
+    "/{area_code}/chargers/{charger_id}",
+    response_model=ChargerResponse,
+    summary="Get one charger: name, occupancy, online/offline, current output",
+)
+async def get_charger(
+    area_code: str, charger_id: str, queries: MongoLoadAreaQueries = Depends(get_queries)
+) -> ChargerResponse:
+    row = await queries.charger(area_code, charger_id)
+    if row is None:
+        raise HTTPException(
+            status_code=404, detail=f"Charger '{charger_id}' not found in area '{area_code}'"
+        )
+    return ChargerResponse.model_validate(row)
+
+
+@router.post(
+    "/{area_code}/chargers/{charger_id}/heartbeat",
+    response_model=ChargerResponse,
+    summary="Charger heartbeat — marks it online (refreshes last seen)",
+)
+async def charger_heartbeat(
+    area_code: str,
+    charger_id: str,
+    service: LoadControlService = Depends(get_service),
+    queries: MongoLoadAreaQueries = Depends(get_queries),
+) -> ChargerResponse:
+    await service.record_charger_heartbeat(
+        RecordChargerHeartbeat(area_code=area_code, charger_id=charger_id)
+    )
+    row = await queries.charger(area_code, charger_id)
+    if row is None:
+        raise HTTPException(
+            status_code=404, detail=f"Charger '{charger_id}' not found in area '{area_code}'"
+        )
+    return ChargerResponse.model_validate(row)

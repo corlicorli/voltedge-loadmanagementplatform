@@ -217,6 +217,49 @@
             "url": "{{base_url}}/load-areas/{{area_code}}/status",
             "description": "Pre-request-scriptet starter 22 baseline-sessioner; selve requesten henter status bagefter."
           }
+        },
+        {
+          "name": "5. Se én laders status (YN-01)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const ch = pm.response.json();",
+                  "pm.test('har navn + status-felter', () => { ['name','occupancyStatus','connectivity','currentOutputKw'].forEach(k => pm.expect(ch).to.have.property(k)); });",
+                  "console.log(`${ch.chargerId} (${ch.name}): ${ch.occupancyStatus}, ${ch.connectivity}, ${ch.currentOutputKw} kW`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/load-areas/{{area_code}}/chargers/YN-01"
+          }
+        },
+        {
+          "name": "6. Charger heartbeat (YN-01 melder sig online)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('laderen er ONLINE', () => pm.expect(pm.response.json().connectivity).to.eql('ONLINE'));",
+                  "console.log('Heartbeat OK — YN-01 er ONLINE');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/load-areas/{{area_code}}/chargers/YN-01/heartbeat"
+          }
         }
       ]
     },

@@ -45,3 +45,12 @@ class RegisterCharger:
     area_code: str
     charger_id: str
     max_power_kw: float
+    name: str = ""
+
+
+@dataclass(frozen=True)
+class RecordChargerHeartbeat:
+    """Trigger: a charger reports in (online heartbeat)."""
+
+    area_code: str
+    charger_id: str

@@ -135,7 +135,9 @@ Forventet: `38 passed`. Unit-tests dækker domæne + hele reguleringskaskaden (i
 | `/sessions` | GET | Aktive charging sessions |
 | `/adjustments` | GET | Load adjustments foretaget af reguleringen |
 | `/evaluate` | POST | Genvurder belastning og regulér |
-| `/chargers` | POST / GET | Registrér / list ladestandere i området |
+| `/chargers` | POST / GET | Registrér / list ladestandere (navn, occupancy, online/offline, output) |
+| `/chargers/{id}` | GET | Én laders detalje: navn, occupancy, online/offline, aktuel kW-output |
+| `/chargers/{id}/heartbeat` | POST | Laderens heartbeat → markerer den ONLINE |
 
 ### Analytics / BI (`/analytics/{areaCode}`)
 | Endpoint | Metode | Beskrivelse |

@@ -14,9 +14,18 @@ from app.load_control.domain.value_objects import PowerLevel
 
 
 class ChargerStatus(str, Enum):
+    """Occupancy — whether a charger is currently serving a vehicle."""
+
     AVAILABLE = "AVAILABLE"
     OCCUPIED = "OCCUPIED"
     FAULTED = "FAULTED"
+
+
+class ChargerConnectivity(str, Enum):
+    """Reachability — whether a charger is in contact (derived from its heartbeat)."""
+
+    ONLINE = "ONLINE"
+    OFFLINE = "OFFLINE"
 
 
 class SessionStatus(str, Enum):
@@ -29,14 +38,37 @@ class LoadRuleType(str, Enum):
     CRITICAL_REGULATION = "CRITICAL_REGULATION"
 
 
+# A charger is considered OFFLINE once its last heartbeat is older than this.
+CHARGER_OFFLINE_AFTER_SECONDS = 60
+
+
+def connectivity_for(last_seen_at: datetime | None, now: datetime) -> ChargerConnectivity:
+    """Derive ONLINE/OFFLINE from the time since the last heartbeat."""
+    if last_seen_at is None:
+        return ChargerConnectivity.OFFLINE
+    age_seconds = (now - last_seen_at).total_seconds()
+    if age_seconds <= CHARGER_OFFLINE_AFTER_SECONDS:
+        return ChargerConnectivity.ONLINE
+    return ChargerConnectivity.OFFLINE
+
+
 @dataclass(frozen=True, slots=True)
 class Charger:
-    """A physical charging station tied to a LoadArea."""
+    """A physical charging station tied to a LoadArea (own identity + lifecycle)."""
 
     charger_id: str
     area_code: str
     max_power_kw: float
+    name: str = ""
     status: ChargerStatus = ChargerStatus.AVAILABLE
+    last_seen_at: datetime | None = None
+
+    def with_heartbeat(self, now: datetime) -> Charger:
+        """Return a copy that has just reported in — refreshes last_seen_at."""
+        return replace(self, last_seen_at=now)
+
+    def connectivity(self, now: datetime) -> ChargerConnectivity:
+        return connectivity_for(self.last_seen_at, now)
 
 
 @dataclass(frozen=True, slots=True)

@@ -45,7 +45,9 @@ def to_load_area(
             charger_id=d["_id"],
             area_code=d["area_code"],
             max_power_kw=d["max_power_kw"],
+            name=d.get("name", d["_id"]),
             status=ChargerStatus(d["status"]),
+            last_seen_at=d.get("last_seen_at"),
         )
         for d in charger_docs
     ]

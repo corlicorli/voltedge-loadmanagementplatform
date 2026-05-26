@@ -4,14 +4,35 @@ equivalents of the SQL read-model views (v_load_area_status, v_active_sessions,
 v_load_adjustments)."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from app.load_control.application.queries import LoadAreaQueries
-from app.platform.database import Database
+from app.load_control.domain.entities import connectivity_for
+from app.platform.database import Database, utcnow
 
 
 def _round(value: float, ndigits: int = 3) -> float:
     return round(float(value), ndigits)
+
+
+def _charger_detail(
+    doc: dict[str, Any], output_by_charger: dict[str, float], now: datetime
+) -> dict[str, Any]:
+    """Combine a charger doc with the live session view: occupancy + current output
+    come from active sessions; connectivity is derived from the last heartbeat."""
+    charger_id = doc["_id"]
+    output = output_by_charger.get(charger_id)
+    occupied = output is not None
+    return {
+        "charger_id": charger_id,
+        "area_code": doc["area_code"],
+        "name": doc.get("name", charger_id),
+        "max_power_kw": doc["max_power_kw"],
+        "occupancy_status": "OCCUPIED" if occupied else "AVAILABLE",
+        "connectivity": connectivity_for(doc.get("last_seen_at"), now).value,
+        "current_output_kw": _round(output) if occupied else 0.0,
+    }
 
 
 class MongoLoadAreaQueries(LoadAreaQueries):
@@ -105,12 +126,19 @@ class MongoLoadAreaQueries(LoadAreaQueries):
             .sort("_id", 1)
             .to_list(length=None)
         )
-        return [
-            {
-                "charger_id": d["_id"],
-                "area_code": d["area_code"],
-                "max_power_kw": d["max_power_kw"],
-                "status": d["status"],
-            }
-            for d in docs
-        ]
+        output_by_charger = await self._active_output_by_charger(area_code)
+        now = utcnow()
+        return [_charger_detail(d, output_by_charger, now) for d in docs]
+
+    async def charger(self, area_code: str, charger_id: str) -> dict[str, Any] | None:
+        doc = await self._db.chargers.find_one({"_id": charger_id, "area_code": area_code})
+        if doc is None:
+            return None
+        output_by_charger = await self._active_output_by_charger(area_code)
+        return _charger_detail(doc, output_by_charger, utcnow())
+
+    async def _active_output_by_charger(self, area_code: str) -> dict[str, float]:
+        docs = await self._db.charging_sessions.find(
+            {"area_code": area_code, "status": "ACTIVE"}
+        ).to_list(length=None)
+        return {s["charger_id"]: s["current_power_kw"] for s in docs}

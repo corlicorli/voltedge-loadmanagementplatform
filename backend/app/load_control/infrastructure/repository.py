@@ -71,7 +71,9 @@ class MongoLoadAreaRepository(LoadAreaRepository):
                     "$set": {
                         "area_code": charger.area_code,
                         "max_power_kw": charger.max_power_kw,
+                        "name": charger.name,
                         "status": charger.status.value,
+                        "last_seen_at": charger.last_seen_at,
                     },
                     "$setOnInsert": {"created_at": now},
                 },

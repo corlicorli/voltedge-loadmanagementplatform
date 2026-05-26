@@ -12,6 +12,7 @@ from typing import Any
 from app.load_control.application.commands import (
     CreateLoadArea,
     EvaluateLoadAreaCapacity,
+    RecordChargerHeartbeat,
     RegisterCharger,
     StartChargingSession,
 )
@@ -71,14 +72,23 @@ class LoadControlService:
 
     async def register_charger(self, cmd: RegisterCharger) -> dict[str, Any]:
         area = await self._areas.get(AreaCode(cmd.area_code))
-        charger = area.register_charger(cmd.charger_id, cmd.max_power_kw)
+        charger = area.register_charger(cmd.charger_id, cmd.max_power_kw, cmd.name)
         await self._persist(area)
+        # A freshly registered charger has just contacted us (online) and is free.
         return {
             "charger_id": charger.charger_id,
             "area_code": charger.area_code,
+            "name": charger.name,
             "max_power_kw": charger.max_power_kw,
-            "status": charger.status.value,
+            "occupancy_status": "AVAILABLE",
+            "connectivity": "ONLINE",
+            "current_output_kw": 0.0,
         }
+
+    async def record_charger_heartbeat(self, cmd: RecordChargerHeartbeat) -> None:
+        area = await self._areas.get(AreaCode(cmd.area_code))
+        area.record_charger_heartbeat(cmd.charger_id)
+        await self._persist(area)
 
     async def _regulate_if_needed(self, area: LoadArea) -> None:
         # LoadRegulationPolicy (on LoadAreaUpdated): activate regulation at/over max.

@@ -29,4 +29,8 @@ class LoadAreaQueries(ABC):
 
     @abstractmethod
     async def chargers(self, area_code: str) -> list[dict[str, Any]]:
-        """Chargers belonging to one area."""
+        """Chargers belonging to one area (with occupancy, connectivity, output)."""
+
+    @abstractmethod
+    async def charger(self, area_code: str, charger_id: str) -> dict[str, Any] | None:
+        """One charger's detail: name, occupancy, connectivity, current output."""

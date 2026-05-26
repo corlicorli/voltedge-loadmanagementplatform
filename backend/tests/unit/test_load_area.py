@@ -1,16 +1,20 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from app.load_control.domain.entities import (
+    CHARGER_OFFLINE_AFTER_SECONDS,
     Charger,
+    ChargerConnectivity,
     ChargingSession,
     LoadRule,
     LoadRuleType,
     SessionStatus,
+    connectivity_for,
 )
 from app.load_control.domain.load_area import LoadArea
 from app.load_control.domain.value_objects import AreaCode, LoadStatus, LoadThresholds, PowerLevel
+from app.shared.domain_event import utcnow
 
 pytestmark = pytest.mark.unit
 
@@ -141,3 +145,46 @@ def test_create_factory_starts_empty_with_default_rules():
     assert LoadRuleType.WARNING_LIMIT in rule_types
     crit = next(r for r in area.rules if r.rule_type is LoadRuleType.CRITICAL_REGULATION)
     assert crit.reduction_fraction == 0.10
+
+
+def test_connectivity_derived_from_last_heartbeat():
+    now = utcnow()
+    assert connectivity_for(now, now) is ChargerConnectivity.ONLINE
+    assert connectivity_for(None, now) is ChargerConnectivity.OFFLINE
+    stale = now - timedelta(seconds=CHARGER_OFFLINE_AFTER_SECONDS + 10)
+    assert connectivity_for(stale, now) is ChargerConnectivity.OFFLINE
+
+
+def test_register_charger_sets_name_and_is_online():
+    area = make_area([])  # 24 chargers seeded, no sessions
+    charger = area.register_charger("YN-99", 22.0, name="Test Lader")
+    assert charger.name == "Test Lader"
+    assert charger.connectivity(utcnow()) is ChargerConnectivity.ONLINE
+
+
+def test_register_charger_defaults_name_to_id():
+    area = make_area([])
+    charger = area.register_charger("YN-77", 11.0)
+    assert charger.name == "YN-77"
+
+
+def test_heartbeat_brings_offline_charger_online_with_event():
+    area = make_area([11.0])  # make_area seeds chargers with no last_seen -> OFFLINE
+    updated = area.record_charger_heartbeat("YN-01")
+    assert updated.connectivity(utcnow()) is ChargerConnectivity.ONLINE
+    events = [e.event_type for e in area.pull_events()]
+    assert "ChargerCameOnline" in events
+
+
+def test_repeat_heartbeat_does_not_re_emit_online():
+    area = make_area([11.0])
+    area.record_charger_heartbeat("YN-01")  # offline -> online (emits)
+    area.pull_events()  # clear
+    area.record_charger_heartbeat("YN-01")  # already online
+    assert "ChargerCameOnline" not in [e.event_type for e in area.pull_events()]
+
+
+def test_heartbeat_unknown_charger_rejected():
+    area = make_area([11.0])
+    with pytest.raises(ValueError):
+        area.record_charger_heartbeat("ZZ-99")

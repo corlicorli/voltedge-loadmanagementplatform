@@ -108,3 +108,12 @@ class ChargerRegistered(DomainEvent):
     area_code: str
     charger_id: str
     max_power_kw: float
+    name: str
+
+
+@dataclass(frozen=True)
+class ChargerCameOnline(DomainEvent):
+    """A charger reported in (heartbeat) after being offline/unknown."""
+
+    area_code: str
+    charger_id: str

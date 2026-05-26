@@ -17,6 +17,7 @@ import uuid
 
 from app.load_control.domain.entities import (
     Charger,
+    ChargerConnectivity,
     ChargerStatus,
     ChargingSession,
     LoadAdjustment,
@@ -25,6 +26,7 @@ from app.load_control.domain.entities import (
     SessionStatus,
 )
 from app.load_control.domain.events import (
+    ChargerCameOnline,
     ChargerRegistered,
     ChargingPowerReduced,
     ChargingSessionStarted,
@@ -135,7 +137,7 @@ class LoadArea:
 
     # ----- command: RegisterCharger -----------------------------------------
 
-    def register_charger(self, charger_id: str, max_power_kw: float) -> Charger:
+    def register_charger(self, charger_id: str, max_power_kw: float, name: str = "") -> Charger:
         if charger_id in self._chargers:
             raise ValueError(f"Charger {charger_id!r} already exists in area {self.area_code}")
         if max_power_kw <= 0:
@@ -144,7 +146,9 @@ class LoadArea:
             charger_id=charger_id,
             area_code=self.area_code.value,
             max_power_kw=max_power_kw,
+            name=name or charger_id,
             status=ChargerStatus.AVAILABLE,
+            last_seen_at=utcnow(),
         )
         self._chargers[charger_id] = charger
         self._record(
@@ -152,9 +156,24 @@ class LoadArea:
                 area_code=self.area_code.value,
                 charger_id=charger_id,
                 max_power_kw=max_power_kw,
+                name=charger.name,
             )
         )
         return charger
+
+    def record_charger_heartbeat(self, charger_id: str) -> Charger:
+        """A charger reports in (online). Refreshes last_seen and records
+        ChargerCameOnline on an offline->online transition."""
+        if charger_id not in self._chargers:
+            raise ValueError(f"Charger {charger_id!r} is not part of area {self.area_code}")
+        now = utcnow()
+        charger = self._chargers[charger_id]
+        was_online = charger.connectivity(now) is ChargerConnectivity.ONLINE
+        updated = charger.with_heartbeat(now)
+        self._chargers[charger_id] = updated
+        if not was_online:
+            self._record(ChargerCameOnline(area_code=self.area_code.value, charger_id=charger_id))
+        return updated
 
     # ----- command: StartChargingSession ------------------------------------
 

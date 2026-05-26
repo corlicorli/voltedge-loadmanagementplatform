@@ -1,7 +1,8 @@
 """API/integration tests against a running MongoDB (skipped if unreachable).
 
-The TestClient triggers the app lifespan, which ensures indexes and seeds the
-YN load area, so these exercise the real DDD stack through HTTP.
+The TestClient triggers the app lifespan (ensures indexes); the conftest fixture
+builds the YN area + 24 chargers + baseline via the API, so these exercise the
+real DDD stack through HTTP.
 """
 import pytest
 
@@ -109,3 +110,32 @@ def test_analytics_list_endpoints(api_client, path):
     response = api_client.get(path)
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
+
+def test_get_charger_by_id_free(api_client):
+    response = api_client.get("/load-areas/YN/chargers/YN-24")  # free at baseline
+    assert response.status_code == 200
+    c = response.json()
+    assert c["chargerId"] == "YN-24"
+    assert c["name"]
+    assert c["occupancyStatus"] == "AVAILABLE"
+    assert c["currentOutputKw"] == 0
+    assert c["connectivity"] in ("ONLINE", "OFFLINE")
+
+
+def test_occupied_charger_reports_output(api_client):
+    response = api_client.get("/load-areas/YN/chargers/YN-01")  # has a baseline session
+    assert response.status_code == 200
+    c = response.json()
+    assert c["occupancyStatus"] == "OCCUPIED"
+    assert c["currentOutputKw"] > 0
+
+
+def test_charger_heartbeat_marks_online(api_client):
+    response = api_client.post("/load-areas/YN/chargers/YN-24/heartbeat")
+    assert response.status_code == 200
+    assert response.json()["connectivity"] == "ONLINE"
+
+
+def test_get_unknown_charger_returns_404(api_client):
+    assert api_client.get("/load-areas/YN/chargers/NOPE").status_code == 404
