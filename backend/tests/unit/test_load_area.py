@@ -53,28 +53,28 @@ def regulate(area: LoadArea) -> bool | None:
 
 
 def test_baseline_is_warning():
-    area = make_area([11.0] * 21 + [2.0])  # 233 kW
-    assert area.current_load_kw == 233.0
+    area = make_area([11.0] * 21)  # 231 kW
+    assert area.current_load_kw == 231.0
     assert area.status is LoadStatus.WARNING
 
 
 def test_new_session_pushes_critical_then_regulates_to_stable():
-    area = make_area([11.0] * 21 + [2.0])  # 233 kW, 22 sessions
-    area.start_session("YN-23", PowerLevel(11.0))
+    area = make_area([11.0] * 21)  # 231 kW, 21 sessions
+    area.start_session("YN-22", PowerLevel(11.0))
 
-    assert area.current_load_kw == 244.0
+    assert area.current_load_kw == 242.0
     assert area.status is LoadStatus.CRITICAL
 
     success = regulate(area)
     assert success is True
-    assert area.current_load_kw == 219.6  # 244 * 0.90
+    assert area.current_load_kw == 217.8  # 242 * 0.90
     assert area.status is LoadStatus.WARNING
 
     events = [e.event_type for e in area.pull_events()]
     assert events[0] == "ChargingSessionStarted"
     assert "LoadThresholdReached" in events
     assert "LoadRuleActivated" in events
-    assert events.count("ChargingPowerReduced") == 23  # one per active session
+    assert events.count("ChargingPowerReduced") == 22  # one per active session
     assert "LoadAreaStabilized" in events
     assert "RegulationFailed" not in events
 

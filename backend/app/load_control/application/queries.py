@@ -1,8 +1,8 @@
 """Read-side port (CQRS-lite).
 
-Commands go through the LoadArea aggregate; queries are served from the
-warehouse views and never load the aggregate. This keeps the read and write
-models decoupled and lets the BI/analytics layer reuse the same projections.
+Commands go through the LoadArea aggregate; queries are served from MongoDB
+aggregation pipelines and never load the aggregate. This keeps the read and
+write models decoupled and lets the BI/analytics layer reuse the same projections.
 """
 from __future__ import annotations
 

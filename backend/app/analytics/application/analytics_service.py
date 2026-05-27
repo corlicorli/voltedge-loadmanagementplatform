@@ -1,8 +1,8 @@
 """AnalyticsService — descriptive and diagnostic analytics.
 
 Computes the metrics consumed by the React BI dashboard (exam §6) with MongoDB
-aggregation pipelines — the document-database equivalents of the SQL warehouse
-views built by the Load Control Context. Read-only: analytics never writes.
+aggregation pipelines over the Load Control Context's collections. Read-only:
+analytics never writes.
 """
 from __future__ import annotations
 

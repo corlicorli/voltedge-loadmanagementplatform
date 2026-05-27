@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "voltedge-load-mgmt-0001",
     "name": "VoltEdge — Load Management Demo",
-    "description": "End-to-end demo of the Load Control Service + Analytics API.\n\nRun top to bottom against a freshly started stack (`docker compose up`) to reproduce the report scenario for LoadArea YN: baseline ~233 kW (WARNING) -> a new 11 kW session pushes load to 244 kW (CRITICAL) -> automatic 10% regulation -> ~219.6 kW (stabilized). Each request includes test assertions.",
+    "description": "End-to-end demo of the Load Control Service + Analytics API.\n\nRun top to bottom against a freshly started stack (`docker compose up`) to reproduce the report scenario for LoadArea YN: baseline ~231 kW (WARNING) -> a new 11 kW session pushes load to 242 kW (CRITICAL) -> automatic 10% regulation -> ~217.8 kW (stabilized). Each request includes test assertions.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -16,7 +16,7 @@
     },
     {
       "key": "charger_id",
-      "value": "YN-23"
+      "value": "YN-22"
     },
     {
       "key": "sessionId",
@@ -74,7 +74,7 @@
     },
     {
       "name": "2. Onboarding — kunden registrerer sit område",
-      "description": "Kunden onboarder fra en HELT TOM database, udelukkende via API'et: registrér load area YN, registrér dens 24 ladestandere, og start baseline-opladningerne (233 kW). Alt sker med rigtige Postman-kald — intet eksternt script. Kør mod en tom DB.",
+      "description": "Kunden onboarder fra en HELT TOM database, udelukkende via API'et: registrér load area YN, registrér dens 24 ladestandere, og start baseline-opladningerne (231 kW). Alt sker med rigtige Postman-kald — intet eksternt script. Kør mod en tom DB.",
       "item": [
         {
           "name": "1. Registrér load area YN",
@@ -171,19 +171,18 @@
           }
         },
         {
-          "name": "4. Start baseline-opladninger (→ 233 kW)",
+          "name": "4. Start baseline-opladninger (→ 231 kW)",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Start baseline-opladninger: 21 x 11 kW + 1 x 2 kW = 233 kW (WARNING). YN-23/24 frie.",
+                  "// Start baseline-opladninger: 21 x 11 kW = 231 kW (WARNING). YN-22/23/24 frie.",
                   "const base = pm.variables.get('base_url');",
                   "const area = pm.variables.get('area_code');",
                   "const sessions = [];",
                   "for (let g = 1; g <= 21; g++) sessions.push({ chargerId: 'YN-' + String(g).padStart(2, '0'), powerLevelKw: 11 });",
-                  "sessions.push({ chargerId: 'YN-22', powerLevelKw: 2 });",
                   "function start(i) {",
                   "  if (i >= sessions.length) return;",
                   "  pm.sendRequest({",
@@ -204,9 +203,9 @@
                 "exec": [
                   "pm.test('status is 200', () => pm.response.to.have.status(200));",
                   "const a = pm.response.json();",
-                  "pm.test('baseline ~233 kW', () => pm.expect(a.currentLoadKw).to.be.within(230, 236));",
+                  "pm.test('baseline ~231 kW', () => pm.expect(a.currentLoadKw).to.be.within(229, 233));",
                   "pm.test('status WARNING', () => pm.expect(a.status).to.eql('WARNING'));",
-                  "console.log(`Baseline: ${a.currentLoadKw} kW (${a.status}), ${a.activeSessionCount} sessioner. Ledige: YN-23, YN-24.`);"
+                  "console.log(`Baseline: ${a.currentLoadKw} kW (${a.status}), ${a.activeSessionCount} sessioner. Ledige: YN-22, YN-23, YN-24.`);"
                 ]
               }
             }
@@ -215,7 +214,7 @@
             "method": "GET",
             "header": [],
             "url": "{{base_url}}/load-areas/{{area_code}}/status",
-            "description": "Pre-request-scriptet starter 22 baseline-sessioner; selve requesten henter status bagefter."
+            "description": "Pre-request-scriptet starter 21 baseline-sessioner; selve requesten henter status bagefter."
           }
         },
         {
@@ -290,7 +289,7 @@
           }
         },
         {
-          "name": "2. Aktuel status (baseline ~233 kW, WARNING)",
+          "name": "2. Aktuel status (baseline ~231 kW, WARNING)",
           "event": [
             {
               "listen": "test",
@@ -311,14 +310,14 @@
           }
         },
         {
-          "name": "3. Ledig lader YN-23 tages i brug (rammer max -> regulering)",
+          "name": "3. Ledig lader YN-22 tages i brug (rammer max -> regulering)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Kanonisk forloeb mod frisk seed: 233 + 11 = 244 kW (CRITICAL) -> 10% regulering -> 219,6 kW.",
+                  "// Kanonisk forloeb mod frisk seed: 231 + 11 = 242 kW (CRITICAL) -> 10% regulering -> 217,8 kW.",
                   "pm.test('status is 201', () => pm.response.to.have.status(201));",
                   "const r = pm.response.json();",
                   "const a = r.areaStatus;",
@@ -389,7 +388,7 @@
           }
         },
         {
-          "name": "6. Status (stabiliseret ~219,6 kW)",
+          "name": "6. Status (stabiliseret ~217,8 kW)",
           "event": [
             {
               "listen": "test",
@@ -410,7 +409,7 @@
           }
         }
       ],
-      "description": "Forudsætning: baseline er bygget op (kør Onboarding + populatoren: docker compose exec backend python scripts/populate_demo.py). Tager den ledige lader YN-23 i brug -> 244 kW CRITICAL -> 10% regulering -> 219,6 kW."
+      "description": "Forudsætning: baseline er bygget op (kør Onboarding-mappen først). Tager den ledige lader YN-22 i brug -> 242 kW CRITICAL -> 10% regulering -> 217,8 kW."
     },
     {
       "name": "4. Analytics (BI)",

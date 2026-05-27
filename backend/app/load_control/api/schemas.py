@@ -31,7 +31,7 @@ class AreaSummary(CamelModel):
 
 
 class StartSessionRequest(CamelModel):
-    charger_id: str = Field(min_length=1, examples=["YN-23"])
+    charger_id: str = Field(min_length=1, examples=["YN-22"])
     power_level_kw: float = Field(gt=0, le=350, examples=[11])
 
 

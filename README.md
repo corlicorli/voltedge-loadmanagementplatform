@@ -18,7 +18,7 @@ Beslutning  belastning når 240 kW (100%)  →  CRITICAL          ─► domain_
             LoadRegulationPolicy + PowerReductionPolicy           (event store / audit)
 
 Handling    reducér ladeeffekt 10%                             ─► load_adjustments
-            244 kW → 219,6 kW → LoadAreaStabilized             ─► load_samples (BI-tidsserie)
+            242 kW → 217,8 kW → LoadAreaStabilized             ─► load_samples (BI-tidsserie)
 ```
 
 Modellen er **regelbaseret** (ikke forecasting), i tråd med rapporten. **BI (React, §6) og driftsovervågning (Grafana, §5) er bevidst adskilte** — Grafana overvåger API'ets sundhed, React visualiserer load management-forretningsdata.
@@ -83,7 +83,7 @@ Systemet starter **tomt** — ingen pre-seedet/simuleret data. Du bygger YN op v
 
 Systemet starter **tomt**; hele forløbet (rapportens scenarie) bygges op via API'et — intet simuleres.
 
-**1. Onboarding** (Postman-mappen *Onboarding*) — kunden registrerer sit load area YN, dens **24 ladestandere** og baseline-opladningerne (→ **233 kW**, WARNING) — alt via rigtige API-kald, intet script:
+**1. Onboarding** (Postman-mappen *Onboarding*) — kunden registrerer sit load area YN, dens **24 ladestandere** og baseline-opladningerne (→ **231 kW**, WARNING) — alt via rigtige API-kald, intet script:
 
 ```bash
 curl -X POST http://localhost:8000/load-areas \
@@ -92,17 +92,17 @@ curl -X POST http://localhost:8000/load-areas \
 # + POST /load-areas/YN/chargers (YN-01..YN-24) og /sessions (baseline) — Onboarding-mappen gør det automatisk
 ```
 
-**2. Regulering** (Postman-mappen *Regulering*) — en ledig lader (YN-23) tages i brug → **244 kW (CRITICAL)** → **10% regulering** → **219,6 kW**:
+**2. Regulering** (Postman-mappen *Regulering*) — en ledig lader (YN-22) tages i brug → **242 kW (CRITICAL)** → **10% regulering** → **217,8 kW**:
 
 ```bash
 curl -X POST http://localhost:8000/load-areas/YN/sessions \
-  -H 'content-type: application/json' -d '{"chargerId":"YN-23","powerLevelKw":11}'
+  -H 'content-type: application/json' -d '{"chargerId":"YN-22","powerLevelKw":11}'
 curl http://localhost:8000/analytics/YN/regulation-events    # nu fyldt
 ```
 
 Eller kør hele forløbet automatisk: `./postman/run-demo.sh` (onboarding → regulering → analytics).
 
-**Postman / newman:** collectionen har mapperne **Setup · Onboarding · Regulering · Analytics** ([`postman/VoltEdge-LoadManagement.postman_collection.json`](postman/VoltEdge-LoadManagement.postman_collection.json)). YN har **24 faste standere** — onboarding/populator registrerer netop dem, ingen ud over de 24. `run-demo.sh` bygger baseline (populator) og kører hele collectionen:
+**Postman / newman:** collectionen har mapperne **Setup · Onboarding · Regulering · Analytics** ([`postman/VoltEdge-LoadManagement.postman_collection.json`](postman/VoltEdge-LoadManagement.postman_collection.json)). YN har **24 faste standere** — onboarding-mappen registrerer netop dem, ingen ud over de 24. `run-demo.sh` kører hele collectionen end-to-end:
 
 ```bash
 ./postman/run-demo.sh

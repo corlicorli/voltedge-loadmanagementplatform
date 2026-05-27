@@ -1,7 +1,6 @@
 """Read-side implementation (CQRS): serves queries by computing the live
-projections directly from the MongoDB collections — the document-database
-equivalents of the SQL read-model views (v_load_area_status, v_active_sessions,
-v_load_adjustments)."""
+projections directly from the MongoDB collections with aggregation pipelines,
+keeping the read model decoupled from the write-side aggregate."""
 from __future__ import annotations
 
 from datetime import datetime
