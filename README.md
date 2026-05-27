@@ -1,6 +1,6 @@
 # VoltEdge — Load Management Platform
 
-Load management-platform til **VoltEdge Mobility A/S** (KEA 6. semester — Teknisk produkt, slice **A4.3 Skalering og driftsstabilitet**). Realiserer **Load Control Context** (core-subdomænet *Load Management*) med Domain-Driven Design.
+Load management-platform til **VoltEdge Mobility A/S** (EK 6. semester — Teknisk produkt, slice **A4.3 Skalering og driftsstabilitet**). Realiserer **Load Control Context** (core-subdomænet *Load Management*) med Domain-Driven Design.
 
 Når en bil starter opladning i et load area, stiger den samlede belastning. Når belastningen rammer områdets kapacitetsgrænse, **reducerer systemet automatisk ladeeffekten**, så området ikke overbelastes — alt sammen reelt: rigtig database, rigtige REST-kald og rigtige beregnede resultater.
 
